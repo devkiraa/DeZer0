@@ -2,13 +2,9 @@ import 'package:flutter/material.dart';
 import 'passcode_screen.dart';
 import 'services/app_management_service.dart';
 
-// Make the main function async to allow for initialization before the app runs
 Future<void> main() async {
-  // Ensure Flutter's widget binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  // Load the installed tools list from storage before running the app
   await AppManagementService().init();
-  
   runApp(const MyApp());
 }
 

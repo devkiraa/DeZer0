@@ -6,10 +6,11 @@ import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
 import 'tool_detail_screen.dart';
 import 'updates_screen.dart';
+import '../services/wifi_service.dart';
 
 class ToolsScreen extends StatefulWidget {
-  final BleService bleService;
-  const ToolsScreen({super.key, required this.bleService});
+  final WifiService wifiService; // Accepts the service
+  const ToolsScreen({super.key, required this.wifiService});
 
   @override
   State<ToolsScreen> createState() => _ToolsScreenState();

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'ble_service.dart';
+import 'services/wifi_service.dart';
 import 'screens/device_screen.dart';
 import 'screens/apps_screen.dart';
 import 'screens/tools_screen.dart';
@@ -13,22 +13,23 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  final BleService _bleService = BleService();
+  final WifiService _wifiService = WifiService();
   late final List<Widget> _widgetOptions;
 
   @override
   void initState() {
     super.initState();
+    // Pass the single WifiService instance to all screens that need it
     _widgetOptions = <Widget>[
-      DeviceScreen(bleService: _bleService),
-      const AppsScreen(), // No longer needs parameters
-      ToolsScreen(bleService: _bleService),
+      DeviceScreen(wifiService: _wifiService),
+      const AppsScreen(),
+      ToolsScreen(wifiService: _wifiService),
     ];
   }
 
   @override
   void dispose() {
-    _bleService.disconnect();
+    _wifiService.disconnect();
     super.dispose();
   }
 
@@ -45,7 +46,7 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.usb),
+            icon: Icon(Icons.wifi_tethering),
             label: 'Device',
           ),
           BottomNavigationBarItem(
