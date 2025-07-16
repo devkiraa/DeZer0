@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/app_management_service.dart';
 import '../services/marketplace_service.dart';
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
-import 'tool_detail_screen.dart';
+import 'run_tool_screen.dart';
 
 class AppsScreen extends StatefulWidget {
+  // Constructor is simple and takes no parameters
   const AppsScreen({super.key});
 
   @override
@@ -13,8 +15,10 @@ class AppsScreen extends StatefulWidget {
 }
 
 class _AppsScreenState extends State<AppsScreen> {
+  // Services are accessed directly
   final AppManagementService _appManagementService = AppManagementService();
   final MarketplaceService _marketplaceService = MarketplaceService();
+  
   List<ToolPackage> _allTools = [];
   List<ToolPackage> _installedPackages = [];
   bool _isLoading = true;
@@ -56,17 +60,6 @@ class _AppsScreenState extends State<AppsScreen> {
     }
   }
 
-  void _navigateToDetail(ToolPackage tool) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ToolDetailScreen(
-          tool: tool,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -85,19 +78,30 @@ class _AppsScreenState extends State<AppsScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   itemCount: _installedPackages.length,
                   itemBuilder: (context, index) {
                     final tool = _installedPackages[index];
                     return ToolListItem(
                       tool: tool,
                       isInstalled: true,
-                      onTap: () => _navigateToDetail(tool),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => RunToolScreen(tool: tool)),
+                        );
+                      },
                       onInstall: () {},
-                      onUninstall: () => _appManagementService.uninstallTool(tool.id),
+                      onUninstall: () =>
+                          _appManagementService.uninstallTool(tool.id),
                       onRun: () {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text("Running ${tool.name}... (simulation)")));
+                         Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => RunToolScreen(tool: tool)),
+                        );
                       },
                     );
                   },

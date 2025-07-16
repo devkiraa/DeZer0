@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/wifi_service.dart';
+import 'services/app_management_service.dart';
 import 'screens/device_screen.dart';
 import 'screens/apps_screen.dart';
 import 'screens/tools_screen.dart';
@@ -14,16 +15,19 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final WifiService _wifiService = WifiService();
+  final AppManagementService _appManagementService = AppManagementService();
   late final List<Widget> _widgetOptions;
 
   @override
   void initState() {
     super.initState();
-    // Pass the single WifiService instance to all screens that need it
     _widgetOptions = <Widget>[
       DeviceScreen(wifiService: _wifiService),
-      const AppsScreen(),
-      ToolsScreen(wifiService: _wifiService),
+      const AppsScreen(), // FIX: No longer needs parameters
+      ToolsScreen(
+        wifiService: _wifiService,
+        appManagementService: _appManagementService,
+      ),
     ];
   }
 

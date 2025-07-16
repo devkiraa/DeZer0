@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
-import '../ble_service.dart';
+import '../services/wifi_service.dart';
 import '../services/app_management_service.dart';
 import '../services/marketplace_service.dart';
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
 import 'tool_detail_screen.dart';
 import 'updates_screen.dart';
-import '../services/wifi_service.dart';
 
 class ToolsScreen extends StatefulWidget {
-  final WifiService wifiService; // Accepts the service
-  const ToolsScreen({super.key, required this.wifiService});
+  final WifiService wifiService;
+  final AppManagementService appManagementService;
+  const ToolsScreen(
+      {super.key,
+      required this.wifiService,
+      required this.appManagementService});
 
   @override
   State<ToolsScreen> createState() => _ToolsScreenState();
 }
 
 class _ToolsScreenState extends State<ToolsScreen> {
-  final AppManagementService _appManagementService = AppManagementService();
   final MarketplaceService _marketplaceService = MarketplaceService();
   List<ToolPackage> _allTools = [];
   List<ToolPackage> _filteredTools = [];
@@ -27,13 +29,14 @@ class _ToolsScreenState extends State<ToolsScreen> {
   @override
   void initState() {
     super.initState();
-    _appManagementService.installedTools.addListener(_onInstallStatusChanged);
+    widget.appManagementService.installedTools.addListener(_onInstallStatusChanged);
     _fetchTools();
   }
 
   @override
   void dispose() {
-    _appManagementService.installedTools.removeListener(_onInstallStatusChanged);
+    widget.appManagementService.installedTools
+        .removeListener(_onInstallStatusChanged);
     super.dispose();
   }
 
@@ -66,7 +69,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
   }
 
   void _checkForUpdates() {
-    final installed = _appManagementService.installedTools.value;
+    final installed = widget.appManagementService.installedTools.value;
     bool foundUpdates = false;
     for (var installedToolId in installed.keys) {
       try {
@@ -119,7 +122,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
               IconButton(
                 icon: const Icon(Icons.system_update_alt),
                 onPressed: () {
-                  final installed = _appManagementService.installedTools.value;
+                  final installed =
+                      widget.appManagementService.installedTools.value;
                   final List<ToolPackage> updatableTools = [];
 
                   for (var installedToolId in installed.keys) {
@@ -138,8 +142,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                     MaterialPageRoute(
                       builder: (context) => UpdatesScreen(
                         updatableTools: updatableTools,
-                        // FIX: Pass the required appManagementService
-                        appManagementService: _appManagementService,
+                        appManagementService: widget.appManagementService,
                       ),
                     ),
                   );
@@ -193,14 +196,14 @@ class _ToolsScreenState extends State<ToolsScreen> {
                         itemBuilder: (context, index) {
                           final tool = _filteredTools[index];
                           final isInstalled =
-                              _appManagementService.isInstalled(tool.id);
+                              widget.appManagementService.isInstalled(tool.id);
                           return ToolListItem(
                             tool: tool,
                             isInstalled: isInstalled,
                             onTap: () => _navigateToDetail(tool),
                             onInstall: () => _navigateToDetail(tool),
-                            onUninstall: () =>
-                                _appManagementService.uninstallTool(tool.id),
+                            onUninstall: () => widget.appManagementService
+                                .uninstallTool(tool.id),
                             onRun: () {},
                           );
                         },
