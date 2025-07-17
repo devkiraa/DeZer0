@@ -4,6 +4,7 @@ import '../services/marketplace_service.dart';
 import '../services/wifi_service.dart';
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
+import 'tool_detail_screen.dart';
 import 'run_tool_screen.dart';
 
 class AppsScreen extends StatefulWidget {
@@ -31,7 +32,7 @@ class _AppsScreenState extends State<AppsScreen> {
     widget.appManagementService.installedTools.addListener(_filterInstalledTools);
     _initialize();
   }
-  
+
   @override
   void dispose() {
     widget.appManagementService.installedTools.removeListener(_filterInstalledTools);
@@ -50,9 +51,7 @@ class _AppsScreenState extends State<AppsScreen> {
   void _filterInstalledTools() {
     final installedIds = widget.appManagementService.installedTools.value;
     final filtered = _allTools.where((tool) => installedIds.containsKey(tool.id)).toList();
-    if (mounted) {
-      setState(() { _installedPackages = filtered; });
-    }
+    if (mounted) setState(() { _installedPackages = filtered; });
   }
 
   @override
@@ -64,7 +63,7 @@ class _AppsScreenState extends State<AppsScreen> {
           : _installedPackages.isEmpty
               ? const Center(child: Text("No apps installed."))
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.all(8.0),
                   itemCount: _installedPackages.length,
                   itemBuilder: (context, index) {
                     final tool = _installedPackages[index];
@@ -78,7 +77,7 @@ class _AppsScreenState extends State<AppsScreen> {
                             builder: (context) => RunToolScreen(
                               tool: tool,
                               wifiService: widget.wifiService,
-                            )
+                            ),
                           ),
                         );
                       },
@@ -91,7 +90,7 @@ class _AppsScreenState extends State<AppsScreen> {
                             builder: (context) => RunToolScreen(
                               tool: tool,
                               wifiService: widget.wifiService,
-                            )
+                            ),
                           ),
                         );
                       },

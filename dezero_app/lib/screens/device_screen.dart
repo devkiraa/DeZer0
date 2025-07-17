@@ -245,7 +245,6 @@ class _DeviceScreenState extends State<DeviceScreen> {
       child: Column(
         children: [
           _buildInfoTile("Firmware Version", _firmwareVersion),
-          _buildInfoTile("Build Date", _buildDate),
           _buildInfoTile("MAC Address", _macAddress),
           _buildInfoTile("CPU Frequency", "$_cpuFreq MHz"),
           _buildInfoTile(

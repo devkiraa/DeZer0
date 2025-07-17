@@ -13,8 +13,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Colors.orange;
-    const backgroundColor = Color.fromARGB(255, 255, 255, 255);
+    const primaryColor = Colors.black;
+    const backgroundColor = Colors.white;
 
     return MaterialApp(
       title: 'DeZer0 App',
@@ -23,9 +23,15 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.light,
         scaffoldBackgroundColor: backgroundColor,
         primaryColor: primaryColor,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: primaryColor,
-          brightness: Brightness.light,
+        colorScheme: const ColorScheme.light(
+          primary: primaryColor,
+          onPrimary: Colors.white,
+          secondary: Colors.black,
+          onSecondary: Colors.white,
+          background: backgroundColor,
+          onBackground: Colors.black,
+          surface: backgroundColor,
+          onSurface: Colors.black,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: backgroundColor,
@@ -40,15 +46,24 @@ class MyApp extends StatelessWidget {
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
-          selectedItemColor: primaryColor,
+          selectedItemColor: Colors.black,
           unselectedItemColor: Colors.grey,
         ),
         cardTheme: CardThemeData(
           elevation: 0,
+          color: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
           ),
           clipBehavior: Clip.antiAlias,
+        ),
+        textTheme: const TextTheme(
+          bodyLarge: TextStyle(color: Colors.black),
+          bodyMedium: TextStyle(color: Colors.black),
+          bodySmall: TextStyle(color: Colors.black),
+          titleLarge: TextStyle(color: Colors.black),
+          titleMedium: TextStyle(color: Colors.black),
+          titleSmall: TextStyle(color: Colors.black),
         ),
       ),
       home: const PasscodeScreen(),

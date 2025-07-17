@@ -1,25 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/tool_package.dart';
 
 class AppManagementService {
-  static final AppManagementService _instance = AppManagementService._internal();
-  factory AppManagementService() => _instance;
-  AppManagementService._internal();
-
   final ValueNotifier<Map<String, String>> installedTools = ValueNotifier({});
   static const _storageKey = 'installed_tools';
   String _appDocsPath = '';
 
   Future<void> init() async {
-    // Get the app's document directory path
     final directory = await getApplicationDocumentsDirectory();
     _appDocsPath = directory.path;
     
-    // Load the list of installed tools from shared_preferences
     final prefs = await SharedPreferences.getInstance();
     final String? savedToolsJson = prefs.getString(_storageKey);
     if (savedToolsJson != null) {
@@ -33,11 +28,16 @@ class AppManagementService {
     await prefs.setString(_storageKey, json.encode(installedTools.value));
   }
   
-  bool isInstalled(String toolId) => installedTools.value.containsKey(toolId);
+  bool isInstalled(String toolId) {
+    return installedTools.value.containsKey(toolId);
+  }
+  
+  String getInstalledVersion(String toolId) {
+    return installedTools.value[toolId] ?? "";
+  }
 
-  // NEW: Save the downloaded script to a file
   Future<void> installTool(ToolPackage tool, Uint8List scriptBytes) async {
-    if (!isInstalled(tool.id)) {
+    if (!isInstalled(tool.id) || getInstalledVersion(tool.id) != tool.version) {
       final file = File('$_appDocsPath/${tool.id}.py');
       await file.writeAsBytes(scriptBytes);
       
@@ -45,11 +45,9 @@ class AppManagementService {
       currentTools[tool.id] = tool.version;
       installedTools.value = currentTools;
       await _save();
-      print("Installed ${tool.name} to ${file.path}");
     }
   }
 
-  // NEW: Read the script from a file
   Future<String?> getScript(String toolId) async {
     if (!isInstalled(toolId)) return null;
     try {
@@ -60,7 +58,6 @@ class AppManagementService {
     }
   }
 
-  // NEW: Delete the script file
   Future<void> uninstallTool(String toolId) async {
     if (isInstalled(toolId)) {
       try {

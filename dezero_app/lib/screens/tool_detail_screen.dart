@@ -1,18 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../models/tool_package.dart';
 import '../services/app_management_service.dart';
 import '../services/marketplace_service.dart';
+import '../services/wifi_service.dart';
+import 'run_tool_screen.dart';
 
-enum DownloadState { none, downloading, complete, error }
+enum ActionState { idle, downloading }
 
 class ToolDetailScreen extends StatefulWidget {
   final ToolPackage tool;
+  final WifiService wifiService;
+  final AppManagementService appManagementService;
 
   const ToolDetailScreen({
     super.key,
     required this.tool,
+    required this.wifiService,
+    required this.appManagementService,
   });
 
   @override
@@ -20,109 +27,121 @@ class ToolDetailScreen extends StatefulWidget {
 }
 
 class _ToolDetailScreenState extends State<ToolDetailScreen> {
-  final AppManagementService _appManagementService = AppManagementService();
   final MarketplaceService _marketplaceService = MarketplaceService();
   
-  DownloadState _downloadState = DownloadState.none;
+  ActionState _actionState = ActionState.idle;
   double _progress = 0.0;
   late bool _isInstalled;
+  bool _isUpdateAvailable = false;
+  String _changelog = "Loading changelog...";
 
   @override
   void initState() {
     super.initState();
-    _isInstalled = _appManagementService.isInstalled(widget.tool.id);
-    _appManagementService.installedTools.addListener(_onInstallStatusChanged);
+    widget.appManagementService.installedTools.addListener(_checkInstallationStatus);
+    _checkInstallationStatus();
+    _fetchChangelog();
   }
 
   @override
   void dispose() {
-    _appManagementService.installedTools.removeListener(_onInstallStatusChanged);
+    widget.appManagementService.installedTools.removeListener(_checkInstallationStatus);
     super.dispose();
   }
   
-  void _onInstallStatusChanged() {
-    final newStatus = _appManagementService.isInstalled(widget.tool.id);
-    if (newStatus != _isInstalled && mounted) {
+  void _checkInstallationStatus() {
+    if (!mounted) return;
+    final isInstalled = widget.appManagementService.isInstalled(widget.tool.id);
+    bool hasUpdate = false;
+    if (isInstalled) {
+      final installedVersion = widget.appManagementService.getInstalledVersion(widget.tool.id);
+      if (installedVersion != widget.tool.version) {
+        hasUpdate = true;
+      }
+    }
+    setState(() {
+      _isInstalled = isInstalled;
+      _isUpdateAvailable = hasUpdate;
+    });
+  }
+
+  Future<void> _fetchChangelog() async {
+    // In our new architecture, the changelog comes from the manifest directly
+    if (mounted) {
       setState(() {
-        _isInstalled = newStatus;
+        _changelog = widget.tool.changelog;
       });
     }
   }
 
-  Future<void> _startDownload() async {
-    setState(() {
-      _downloadState = DownloadState.downloading;
-      _progress = 0.0;
-    });
+  Future<void> _startDownloadOrUpdate() async {
+    setState(() { _actionState = ActionState.downloading; _progress = 0.0; });
 
     final fileBytes = await _marketplaceService.downloadToolWithProgress(
-      widget.tool, (p) {
-        if (mounted) setState(() => _progress = p);
-      });
+      widget.tool, (p) => setState(() => _progress = p));
 
     if(mounted) {
-      setState(() {
-        _downloadState = (fileBytes != null) ? DownloadState.complete : DownloadState.error;
-        if (fileBytes != null) {
-          _appManagementService.installTool(widget.tool, fileBytes);
-        }
-      });
+      if (fileBytes != null) {
+        widget.appManagementService.installTool(widget.tool, fileBytes);
+      }
+      setState(() { _actionState = ActionState.idle; });
     }
   }
 
   void _uninstall() {
-    _appManagementService.uninstallTool(widget.tool.id);
-    setState(() {
-      _downloadState = DownloadState.none;
-    });
+    widget.appManagementService.uninstallTool(widget.tool.id);
+  }
+
+  void _openTool() {
+    Navigator.push(context, MaterialPageRoute(
+      builder: (context) => RunToolScreen(
+        tool: widget.tool,
+        wifiService: widget.wifiService, // Pass the service along
+      )
+    ));
   }
 
   Future<void> _launchRepoUrl() async {
-    // This now links to the main Tool Hub repository
     final url = Uri.parse('https://github.com/devkiraa/DeZer0-Tools');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if(mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Could not open repository link."))
-        );
-      }
+      // Handle error
     }
   }
 
-  Widget _buildInstallButton() {
-    if (_isInstalled) {
-      return OutlinedButton.icon(
-        icon: const Icon(Icons.delete_outline),
-        label: const Text("Uninstall"),
-        onPressed: _uninstall,
-        style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+  Widget _buildActionButton() {
+    if (_actionState == ActionState.downloading) {
+      return SizedBox(
+        height: 50,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            LinearProgressIndicator(value: _progress, minHeight: 50, borderRadius: BorderRadius.circular(25)),
+            Text("${(_progress * 100).toStringAsFixed(0)}%"),
+          ],
+        ),
+      );
+    }
+    
+    if (_isUpdateAvailable) {
+      return FilledButton.icon(
+        icon: const Icon(Icons.system_update_alt),
+        label: const Text("Update"),
+        onPressed: _startDownloadOrUpdate,
+        style: FilledButton.styleFrom(backgroundColor: Colors.green),
       );
     }
 
-    switch (_downloadState) {
-      case DownloadState.downloading:
-        return SizedBox(
-          height: 50,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              LinearProgressIndicator(value: _progress, minHeight: 50, borderRadius: BorderRadius.circular(25)),
-              Text("${(_progress * 100).toStringAsFixed(0)}%"),
-            ],
-          ),
-        );
-      case DownloadState.complete:
-        return FilledButton.icon(
-          onPressed: null,
-          icon: const Icon(Icons.check),
-          label: const Text("Installed"),
-          style: FilledButton.styleFrom(disabledBackgroundColor: Colors.green, disabledForegroundColor: Colors.white),
-        );
-      case DownloadState.error:
-         return FilledButton.icon(onPressed: _startDownload, icon: const Icon(Icons.error), label: const Text("Retry"));
-      default:
-        return FilledButton(onPressed: _startDownload, child: const Text("Install"));
+    if (_isInstalled) {
+      return FilledButton(
+        onPressed: _openTool,
+        child: const Text("Open"),
+      );
     }
+
+    return FilledButton(
+      onPressed: _startDownloadOrUpdate,
+      child: const Text("Install"),
+    );
   }
 
   @override
@@ -135,7 +154,6 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(Icons.extension, size: 60, color: Theme.of(context).primaryColor),
                 const SizedBox(width: 16),
@@ -159,7 +177,15 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(width: double.infinity, height: 50, child: _buildInstallButton()),
+            SizedBox(width: double.infinity, height: 50, child: _buildActionButton()),
+            if (_isInstalled)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _uninstall,
+                  child: const Text("Uninstall", style: TextStyle(color: Colors.red, fontSize: 12)),
+                ),
+              ),
             const SizedBox(height: 24),
             Text("Description", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),
@@ -167,7 +193,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
             const SizedBox(height: 24),
             Text("Changelog", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),
-            Text(widget.tool.changelog),
+            Text(_changelog),
             const SizedBox(height: 24),
             Text("Developer", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/wifi_service.dart';
 import '../services/app_management_service.dart';
-import '../services/marketplace_service.dart';
+import '../services/marketplace_service.dart'; // FIX: Add this missing import
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
 import 'tool_detail_screen.dart';
@@ -105,6 +105,8 @@ class _ToolsScreenState extends State<ToolsScreen> {
       MaterialPageRoute(
         builder: (context) => ToolDetailScreen(
           tool: tool,
+          wifiService: widget.wifiService,
+          appManagementService: widget.appManagementService,
         ),
       ),
     );
@@ -142,6 +144,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                     MaterialPageRoute(
                       builder: (context) => UpdatesScreen(
                         updatableTools: updatableTools,
+                        wifiService: widget.wifiService,
                         appManagementService: widget.appManagementService,
                       ),
                     ),

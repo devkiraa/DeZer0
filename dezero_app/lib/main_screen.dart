@@ -23,7 +23,6 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _widgetOptions = <Widget>[
       DeviceScreen(wifiService: _wifiService),
-      // FIX: Pass both required services
       AppsScreen(
         appManagementService: _appManagementService,
         wifiService: _wifiService,
@@ -53,18 +52,9 @@ class _MainScreenState extends State<MainScreen> {
       body: _widgetOptions.elementAt(_selectedIndex),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.wifi_tethering),
-            label: 'Device',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.apps),
-            label: 'Apps',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.build),
-            label: 'Tools',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.wifi_tethering), label: 'Device'),
+          BottomNavigationBarItem(icon: Icon(Icons.apps), label: 'Apps'),
+          BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Tools'),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
