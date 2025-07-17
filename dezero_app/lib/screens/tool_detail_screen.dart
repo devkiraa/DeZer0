@@ -25,14 +25,12 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
   
   DownloadState _downloadState = DownloadState.none;
   double _progress = 0.0;
-  String _releaseNotes = "Loading changelog...";
   late bool _isInstalled;
 
   @override
   void initState() {
     super.initState();
     _isInstalled = _appManagementService.isInstalled(widget.tool.id);
-    _fetchNotes();
     _appManagementService.installedTools.addListener(_onInstallStatusChanged);
   }
 
@@ -47,15 +45,6 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
     if (newStatus != _isInstalled && mounted) {
       setState(() {
         _isInstalled = newStatus;
-      });
-    }
-  }
-
-  Future<void> _fetchNotes() async {
-    final notes = await _marketplaceService.fetchReleaseNotes(widget.tool);
-    if (mounted) {
-      setState(() {
-        _releaseNotes = notes;
       });
     }
   }
@@ -75,7 +64,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
       setState(() {
         _downloadState = (fileBytes != null) ? DownloadState.complete : DownloadState.error;
         if (fileBytes != null) {
-          _appManagementService.installTool(widget.tool);
+          _appManagementService.installTool(widget.tool, fileBytes);
         }
       });
     }
@@ -89,7 +78,8 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
   }
 
   Future<void> _launchRepoUrl() async {
-    final url = Uri.parse('https://github.com/${widget.tool.repo}');
+    // This now links to the main Tool Hub repository
+    final url = Uri.parse('https://github.com/devkiraa/DeZer0-Tools');
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if(mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -101,10 +91,11 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
 
   Widget _buildInstallButton() {
     if (_isInstalled) {
-      return OutlinedButton(
+      return OutlinedButton.icon(
+        icon: const Icon(Icons.delete_outline),
+        label: const Text("Uninstall"),
         onPressed: _uninstall,
         style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-        child: const Text("Uninstall"),
       );
     }
 
@@ -121,7 +112,12 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
           ),
         );
       case DownloadState.complete:
-        return const FilledButton(onPressed: null, child: Text("Installed"));
+        return FilledButton.icon(
+          onPressed: null,
+          icon: const Icon(Icons.check),
+          label: const Text("Installed"),
+          style: FilledButton.styleFrom(disabledBackgroundColor: Colors.green, disabledForegroundColor: Colors.white),
+        );
       case DownloadState.error:
          return FilledButton.icon(onPressed: _startDownload, icon: const Icon(Icons.error), label: const Text("Retry"));
       default:
@@ -139,6 +135,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(Icons.extension, size: 60, color: Theme.of(context).primaryColor),
                 const SizedBox(width: 16),
@@ -162,7 +159,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(width: double.infinity, child: _buildInstallButton()),
+            SizedBox(width: double.infinity, height: 50, child: _buildInstallButton()),
             const SizedBox(height: 24),
             Text("Description", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),
@@ -170,9 +167,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
             const SizedBox(height: 24),
             Text("Changelog", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),
-            _releaseNotes == "Loading changelog..." 
-              ? const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator(strokeWidth: 2)))
-              : Text(_releaseNotes),
+            Text(widget.tool.changelog),
             const SizedBox(height: 24),
             Text("Developer", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),

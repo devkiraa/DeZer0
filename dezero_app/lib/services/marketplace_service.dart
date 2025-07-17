@@ -4,43 +4,43 @@ import 'package:http/http.dart' as http;
 import '../models/tool_package.dart';
 
 class MarketplaceService {
-  final String _indexUrl =
-      'https://gist.githubusercontent.com/devkiraa/c1cba16be4b8cb1760bca8ffbe388a67/raw/tools.json';
+  // Updated to use your new repository
+  final String _repoOwner = "devkiraa";
+  final String _repoName = "DeZer0-Tools";
 
-  Future<List<ToolPackage>> fetchTools() async {
-    try {
-      final response = await http.get(
-        Uri.parse(_indexUrl),
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      );
-      if (response.statusCode == 200) {
-        final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => ToolPackage.fromJson(json)).toList();
-      } else {
-        throw Exception('Failed to load tool index: ${response.statusCode}');
-      }
-    } catch (e) {
-      print(e);
-      throw Exception('Failed to fetch tools: $e');
-    }
+  late final String _repoContentsUrl;
+  late final String _rawFileUrlBase;
+
+  MarketplaceService() {
+    _repoContentsUrl = 'https://api.github.com/repos/$_repoOwner/$_repoName/contents/';
+    _rawFileUrlBase = 'https://raw.githubusercontent.com/$_repoOwner/$_repoName/main/';
   }
 
-  Future<String> fetchReleaseNotes(ToolPackage package) async {
-    final url = 'https://api.github.com/repos/${package.repo}/releases/latest';
+  Future<List<ToolPackage>> fetchTools() async {
+    print("Fetching tool list from: $_repoContentsUrl");
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data['body'] ?? 'No release notes found.';
-      } else {
-        return 'Could not load release notes.';
+      final response = await http.get(Uri.parse(_repoContentsUrl));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to load tool repository index. Status: ${response.statusCode}');
       }
+
+      final List<dynamic> contents = json.decode(response.body);
+      final List<ToolPackage> tools = [];
+      
+      for (var item in contents) {
+        if (item['type'] == 'dir') {
+          final manifestUrl = '$_rawFileUrlBase${item['name']}/manifest.json';
+          final manifestResponse = await http.get(Uri.parse(manifestUrl));
+          if (manifestResponse.statusCode == 200) {
+            final manifestData = json.decode(manifestResponse.body);
+            tools.add(ToolPackage.fromJson(manifestData));
+          }
+        }
+      }
+      return tools;
     } catch (e) {
-      return 'Error fetching release notes.';
+      print("Failed to fetch tools: $e");
+      rethrow;
     }
   }
 
@@ -48,8 +48,8 @@ class MarketplaceService {
     ToolPackage package,
     void Function(double progress) onProgress,
   ) async {
-    final downloadUrl =
-        'https://github.com/${package.repo}/releases/latest/download/${package.assetFilename}';
+    final downloadUrl = '$_rawFileUrlBase${package.id}/${package.scriptFilename}';
+    print("Downloading from: $downloadUrl");
 
     try {
       final client = http.Client();
@@ -57,21 +57,17 @@ class MarketplaceService {
       final response = await client.send(request);
 
       final totalSize = response.contentLength;
-      if (totalSize == null) {
-        throw Exception("Cannot get file size.");
-      }
-
+      if (totalSize == null) throw Exception("Cannot get file size from server.");
+      
       List<int> bytes = [];
       int receivedBytes = 0;
 
       await for (var chunk in response.stream) {
         bytes.addAll(chunk);
         receivedBytes += chunk.length;
-        final progress = receivedBytes / totalSize;
-        onProgress(progress);
+        onProgress(receivedBytes / totalSize);
       }
-
-      print("Download complete. Total size: $receivedBytes bytes.");
+      
       return Uint8List.fromList(bytes);
     } catch (e) {
       print("Download failed: $e");

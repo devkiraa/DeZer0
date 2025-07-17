@@ -1,30 +1,33 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../models/tool_package.dart';
 import '../services/wifi_service.dart';
+import '../services/app_management_service.dart';
 
 class RunToolScreen extends StatefulWidget {
   final ToolPackage tool;
-  const RunToolScreen({super.key, required this.tool});
+  final WifiService wifiService;
+  const RunToolScreen({super.key, required this.tool, required this.wifiService});
 
   @override
   State<RunToolScreen> createState() => _RunToolScreenState();
 }
 
 class _RunToolScreenState extends State<RunToolScreen> {
-  late WifiService _wifiService;
+  final AppManagementService _appManagementService = AppManagementService();
   StreamSubscription? _logSubscription;
+  
   final List<String> _consoleLogs = [];
+  String _scriptContent = "Loading script...";
+  bool _isLoadingScript = true;
+  bool _isExecuting = false;
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Get the WifiService from Provider and add listeners
-    _wifiService = Provider.of<WifiService>(context, listen: false);
-    _logSubscription?.cancel(); // Cancel any old subscription
-    _logSubscription = _wifiService.logStream.listen(_onDataReceived);
+  void initState() {
+    super.initState();
+    _logSubscription = widget.wifiService.logStream.listen(_onDataReceived);
+    _loadScript();
   }
 
   @override
@@ -33,37 +36,62 @@ class _RunToolScreenState extends State<RunToolScreen> {
     super.dispose();
   }
 
-  void _onDataReceived(String data) {
-    if (!mounted) return;
-
-    // Add raw message to console
-    setState(() {
-      _consoleLogs.insert(0, data);
-    });
-
-    // Try to parse it for pretty printing
-    try {
-      final jsonData = jsonDecode(data);
-      if (jsonData['type'] == 'wifi_scan_results') {
-        final networks = jsonData['networks'] as List;
-        setState(() {
-          _consoleLogs.insert(0, "✅ Found ${networks.length} networks.");
-          for (var net in networks) {
-             _consoleLogs.insert(0, "  - ${net['ssid']} (${net['rssi']} dBm)");
-          }
-        });
-      }
-    } catch (e) {
-      // Ignore if it's not valid JSON
+  Future<void> _loadScript() async {
+    final content = await _appManagementService.getScript(widget.tool.id);
+    if (mounted) {
+      setState(() {
+        _scriptContent = content ?? "Error: Could not load script file.";
+        _isLoadingScript = false;
+      });
     }
   }
 
-  void _runScan() {
-    // Clear previous logs and send command
+  void _onDataReceived(String data) {
+    if (!mounted) return;
+
+    // Check for our special RESULT: prefix
+    if (data.startsWith("RESULT:")) {
+      final jsonString = data.substring(7);
+      try {
+        final jsonData = jsonDecode(jsonString);
+        // Handle Wi-Fi scan results specifically for nice formatting
+        if (jsonData['type'] == 'wifi_scan_results') {
+          final networks = jsonData['networks'] as List;
+          setState(() {
+            _consoleLogs.insert(0, "✅ Found ${networks.length} networks.");
+            for (var net in networks) {
+              _consoleLogs.insert(0, "  - ${net['ssid']} (${net['rssi']} dBm)");
+            }
+          });
+          return;
+        }
+      } catch (e) {
+        // Not valid JSON, just log it raw
+      }
+    }
+    
+    // Add any other log message to the console
     setState(() {
-      _consoleLogs.insert(0, "-> Sending command: scan_wifi");
+      _consoleLogs.insert(0, data);
+      if (data.contains("--- Execution Finished ---")) {
+        _isExecuting = false;
+      }
     });
-    _wifiService.sendCommand('{"command":"scan_wifi"}');
+  }
+
+  void _executeScript() {
+    if (_isLoadingScript || _isExecuting || !_scriptContent.startsWith("import")) return;
+    
+    final command = {
+      "command": "execute_script",
+      "script": _scriptContent
+    };
+    
+    setState(() {
+      _isExecuting = true;
+      _consoleLogs.insert(0, "-> Executing '${widget.tool.name}' on DeZer0...");
+    });
+    widget.wifiService.sendCommand(jsonEncode(command));
   }
 
   @override
@@ -75,27 +103,33 @@ class _RunToolScreenState extends State<RunToolScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // --- Controls Section ---
           Padding(
             padding: const EdgeInsets.all(16.0),
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.wifi_tethering),
-              label: const Text("Scan for Networks"),
-              onPressed: _runScan,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15)
+            child: FilledButton.icon(
+              icon: _isExecuting 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3,))
+                : const Icon(Icons.play_arrow),
+              label: Text(_isExecuting ? "Executing..." : "Execute on DeZer0"),
+              onPressed: (_isLoadingScript || _isExecuting || widget.wifiService.connectionState != WifiConnectionState.connected) ? null : _executeScript,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 15),
               ),
             ),
           ),
-
-          const Divider(),
-
-          // --- Console Section ---
+          const Divider(height: 1),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Console", style: Theme.of(context).textTheme.titleMedium),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Console", style: Theme.of(context).textTheme.titleMedium),
+                 IconButton(
+                  icon: const Icon(Icons.delete_outline),
+                  iconSize: 20,
+                  tooltip: "Clear Console",
+                  onPressed: () => setState(() => _consoleLogs.clear()),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -103,12 +137,15 @@ class _RunToolScreenState extends State<RunToolScreen> {
               color: Colors.black.withOpacity(0.05),
               child: ListView.builder(
                 padding: const EdgeInsets.all(8.0),
-                reverse: true, // To show newest logs at the bottom
+                reverse: true,
                 itemCount: _consoleLogs.length,
                 itemBuilder: (context, index) {
-                  return Text(
-                    _consoleLogs[index],
-                    style: const TextStyle(fontFamily: 'monospace'),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2.0),
+                    child: Text(
+                      _consoleLogs[index],
+                      style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    ),
                   );
                 },
               ),

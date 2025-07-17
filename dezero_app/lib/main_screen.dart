@@ -23,7 +23,11 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _widgetOptions = <Widget>[
       DeviceScreen(wifiService: _wifiService),
-      const AppsScreen(), // FIX: No longer needs parameters
+      // FIX: Pass both services to the AppsScreen
+      AppsScreen(
+        appManagementService: _appManagementService,
+        wifiService: _wifiService,
+      ),
       ToolsScreen(
         wifiService: _wifiService,
         appManagementService: _appManagementService,
