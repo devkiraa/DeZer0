@@ -15,7 +15,7 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   final WifiService _wifiService = WifiService();
-  final AppManagementService _appManagementService = AppManagementService();
+  final AppManagementService _appManagementService = AppManagementService.instance;
   late final List<Widget> _widgetOptions;
 
   @override
@@ -49,7 +49,10 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _widgetOptions.elementAt(_selectedIndex),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _widgetOptions,
+      ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(icon: Icon(Icons.wifi_tethering), label: 'Device'),

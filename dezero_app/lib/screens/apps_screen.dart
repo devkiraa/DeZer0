@@ -53,7 +53,7 @@ class _AppsScreenState extends State<AppsScreen> {
     final filtered = _allTools.where((tool) => installedIds.containsKey(tool.id)).toList();
     if (mounted) setState(() { _installedPackages = filtered; });
   }
-
+  
   void _navigateToRunScreen(ToolPackage tool) {
     Navigator.push(
       context,
@@ -61,7 +61,7 @@ class _AppsScreenState extends State<AppsScreen> {
         builder: (context) => RunToolScreen(
           tool: tool,
           wifiService: widget.wifiService,
-        )
+        ),
       ),
     );
   }

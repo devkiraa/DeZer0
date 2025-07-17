@@ -99,18 +99,18 @@ class _ToolsScreenState extends State<ToolsScreen> {
     });
   }
 
-void _navigateToDetail(ToolPackage tool) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (context) => ToolDetailScreen(
-        tool: tool,
-        wifiService: widget.wifiService,
-        appManagementService: widget.appManagementService,
+  void _navigateToDetail(ToolPackage tool) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ToolDetailScreen(
+          tool: tool,
+          wifiService: widget.wifiService,
+          appManagementService: widget.appManagementService,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

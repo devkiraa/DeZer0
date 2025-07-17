@@ -23,12 +23,24 @@ class _DeviceScreenState extends State<DeviceScreen> {
   String _macAddress = "-";
   int _cpuFreq = 0;
   bool _isFetchingInfo = false;
+  bool _autoConnected = false;
 
   @override
   void initState() {
     super.initState();
     widget.wifiService.addListener(_onStateChanged);
     _logSubscription = widget.wifiService.logStream.listen(_onDataReceived);
+
+    _ipController.text = "192.168.0.100"; // Set default IP
+
+    // Attempt auto-connect
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_autoConnected && widget.wifiService.connectionState == WifiConnectionState.disconnected) {
+        _autoConnected = true;
+        widget.wifiService.connect(_ipController.text);
+      }
+    });
+
     if (widget.wifiService.connectionState == WifiConnectionState.connected) {
       _fetchDeviceInfoWithDelay();
     }
@@ -73,7 +85,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
           });
         }
       }
-    } catch (e) {}
+    } catch (_) {}
   }
 
   void _handleConnect() {
@@ -113,7 +125,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
       children: [
         TextField(
           controller: _ipController,
-          decoration: const InputDecoration(labelText: "DeZer0 IP Address", border: OutlineInputBorder()),
+          decoration: const InputDecoration(
+            labelText: "DeZer0 IP Address",
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.lan),
+          ),
           keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 16),
@@ -134,7 +150,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
       ],
     );
   }
-  
+
   Widget _buildConnectedView() {
     return Column(
       children: [
@@ -149,18 +165,21 @@ class _DeviceScreenState extends State<DeviceScreen> {
     return SizedBox(
       width: double.infinity,
       height: 50,
-      child: OutlinedButton(
+      child: OutlinedButton.icon(
+        icon: const Icon(Icons.link_off),
         onPressed: widget.wifiService.disconnect,
         style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-        child: const Text("Disconnect"),
+        label: const Text("Disconnect"),
       ),
     );
   }
 
   Widget _buildHeaderCard(WifiConnectionState state) {
     return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Row(
           children: [
             Icon(Icons.memory, size: 50, color: Theme.of(context).primaryColor),
@@ -168,8 +187,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("DeZer0", style: Theme.of(context).textTheme.titleLarge),
-                Text(_getTextForState(state), style: TextStyle(color: _getColorForState(state))),
+                const Text("DeZer0 ESP Device", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  _getTextForState(state),
+                  style: TextStyle(color: _getColorForState(state), fontSize: 14),
+                ),
               ],
             ),
           ],
@@ -177,9 +199,11 @@ class _DeviceScreenState extends State<DeviceScreen> {
       ),
     );
   }
-  
+
   Widget _buildDeviceInfoCard() {
     return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           _buildInfoTile("Firmware Version", _firmwareVersion),
@@ -192,24 +216,39 @@ class _DeviceScreenState extends State<DeviceScreen> {
   }
 
   Widget _buildInfoTile(String title, String value) {
-    return ListTile(dense: true, title: Text(title), trailing: Text(value, style: TextStyle(color: Colors.grey[600])));
+    return ListTile(
+      dense: true,
+      title: Text(title),
+      trailing: Text(
+        value,
+        style: TextStyle(color: Colors.grey[700], fontWeight: FontWeight.w500),
+      ),
+    );
   }
-  
+
   Color _getColorForState(WifiConnectionState state) {
     switch (state) {
-      case WifiConnectionState.connected: return Colors.green;
-      case WifiConnectionState.connecting: return Colors.orange;
-      case WifiConnectionState.error: return Colors.red;
-      default: return Colors.grey;
+      case WifiConnectionState.connected:
+        return Colors.green;
+      case WifiConnectionState.connecting:
+        return Colors.orange;
+      case WifiConnectionState.error:
+        return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
   String _getTextForState(WifiConnectionState state) {
     switch (state) {
-      case WifiConnectionState.connecting: return "Connecting...";
-      case WifiConnectionState.connected: return "Connected";
-      case WifiConnectionState.error: return "Error";
-      default: return "Disconnected";
+      case WifiConnectionState.connecting:
+        return "Connecting...";
+      case WifiConnectionState.connected:
+        return "Connected";
+      case WifiConnectionState.error:
+        return "Error";
+      default:
+        return "Disconnected";
     }
   }
 }

@@ -12,7 +12,6 @@ enum ActionState { idle, downloading }
 class ToolDetailScreen extends StatefulWidget {
   final ToolPackage tool;
   final WifiService wifiService;
-  // FIX: Add the field that the constructor requires
   final AppManagementService appManagementService;
 
   const ToolDetailScreen({
@@ -38,7 +37,6 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Access the service via the widget now
     widget.appManagementService.installedTools.addListener(_checkInstallationStatus);
     _checkInstallationStatus();
     _fetchChangelog();
@@ -66,11 +64,17 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
     });
   }
 
-  Future<void> _fetchChangelog() async {
-    setState(() {
-      _changelog = widget.tool.changelog;
-    });
+  Future<void> _fetchChangelog() {
+    // In our new architecture, the changelog comes from the manifest directly
+    if (mounted) {
+      setState(() {
+        _changelog = widget.tool.changelog;
+      });
+    }
+    // Return a completed future
+    return Future.value();
   }
+
 
   Future<void> _startDownloadOrUpdate() async {
     setState(() { _actionState = ActionState.downloading; _progress = 0.0; });
@@ -94,6 +98,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
     Navigator.push(context, MaterialPageRoute(
       builder: (context) => RunToolScreen(
         tool: widget.tool,
+        // FIX: Pass the wifiService to the RunToolScreen
         wifiService: widget.wifiService,
       )
     ));
