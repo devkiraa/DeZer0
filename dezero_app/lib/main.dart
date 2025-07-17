@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'passcode_screen.dart';
 import 'services/app_management_service.dart';
 
-Future<void> main() async {
+// The main function is now simpler.
+// Initialization is handled within the app's widgets.
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppManagementService().init();
   runApp(const MyApp());
 }
 
@@ -13,8 +14,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Colors.black;
-    const backgroundColor = Colors.white;
+    const primaryColor = Color.fromARGB(255, 0, 0, 0);
+    const backgroundColor = Color.fromARGB(255, 255, 255, 255);
 
     return MaterialApp(
       title: 'DeZer0 App',
@@ -23,15 +24,9 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.light,
         scaffoldBackgroundColor: backgroundColor,
         primaryColor: primaryColor,
-        colorScheme: const ColorScheme.light(
-          primary: primaryColor,
-          onPrimary: Colors.white,
-          secondary: Colors.black,
-          onSecondary: Colors.white,
-          background: backgroundColor,
-          onBackground: Colors.black,
-          surface: backgroundColor,
-          onSurface: Colors.black,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: primaryColor,
+          brightness: Brightness.light,
         ),
         appBarTheme: const AppBarTheme(
           backgroundColor: backgroundColor,
@@ -46,7 +41,7 @@ class MyApp extends StatelessWidget {
         ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           backgroundColor: Colors.white,
-          selectedItemColor: Colors.black,
+          selectedItemColor: primaryColor,
           unselectedItemColor: Colors.grey,
         ),
         cardTheme: CardThemeData(
@@ -57,13 +52,16 @@ class MyApp extends StatelessWidget {
           ),
           clipBehavior: Clip.antiAlias,
         ),
-        textTheme: const TextTheme(
-          bodyLarge: TextStyle(color: Colors.black),
-          bodyMedium: TextStyle(color: Colors.black),
-          bodySmall: TextStyle(color: Colors.black),
-          titleLarge: TextStyle(color: Colors.black),
-          titleMedium: TextStyle(color: Colors.black),
-          titleSmall: TextStyle(color: Colors.black),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            backgroundColor: primaryColor,
+            foregroundColor: Colors.white,
+            textStyle: const TextStyle(fontWeight: FontWeight.bold),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          )
         ),
       ),
       home: const PasscodeScreen(),

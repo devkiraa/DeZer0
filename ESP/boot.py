@@ -1,4 +1,4 @@
-# boot.py - Final version with a sandboxed script execution engine
+# boot.py - Final version with 'return' based execution
 
 import machine
 import time
@@ -6,7 +6,7 @@ import uasyncio as asyncio
 import ujson
 import esp32
 import network
-import os
+import gc
 import ubinascii
 
 # --- WIFI CREDENTIALS ---
@@ -35,12 +35,13 @@ async def command_handler(reader, writer):
     print(f"Client connected from {addr}")
     display_status("CLIENT CONNECTED")
     
-    async def send_log_to_client(log_message):
+    async def send_response(data_to_send):
         try:
-            writer.write((str(log_message) + '\n').encode('utf-8'))
+            # All messages must end with a newline for the app to receive them
+            writer.write((data_to_send + '\n').encode('utf-8'))
             await writer.drain()
         except Exception as e:
-            print(f"Failed to send log: {e}")
+            print(f"Failed to send response: {e}")
 
     try:
         while True:
@@ -48,39 +49,35 @@ async def command_handler(reader, writer):
             if not data: break
             
             message = data.decode().strip()
-            print("Command received (first 50 chars):", message[:50])
             
             try:
                 command_json = ujson.loads(message)
                 cmd = command_json.get("command")
                 
-                # --- SCRIPT EXECUTION ENGINE ---
                 if cmd == "execute_script":
-                    script_to_run = command_json.get("script")
-                    if script_to_run:
-                        # FIX: Create a dictionary of all the modules and functions
-                        # that we want to make available to the scripts.
-                        script_globals = {
-                            "send_log": send_log_to_client,
-                            "ujson": ujson,
-                            "network": network,
-                            "time": time,
-                            "machine": machine,
-                            "esp32": esp32,
-                            "ubinascii": ubinascii,
-                            "__name__": "__main__", # Makes scripts behave like they are the main file
-                        }
-                        
-                        await send_log_to_client("--- Executing Script ---")
+                    script_b64 = command_json.get("script")
+                    if script_b64:
+                        await send_response("--- Executing Script ---")
+                        output = ""
                         try:
-                            # Decode the script from Base64
-                            script_code = ubinascii.a2b_base64(script_to_run).decode()
-                            # Execute the script within the 'sandbox' of our globals
-                            exec(script_code, script_globals)
+                            script_code = ubinascii.a2b_base64(script_b64).decode()
+                            
+                            # Create a dictionary to hold the script's functions
+                            script_scope = {}
+                            exec(script_code, script_scope)
+                            
+                            # The script MUST have a 'run_tool()' function
+                            if 'run_tool' in script_scope:
+                                output = script_scope['run_tool']() # Execute the function and get its return value
+                            else:
+                                output = "Script Error: No 'run_tool()' function found."
+                                
                         except Exception as e:
-                            await send_log_to_client(f"Script Error: {e}")
+                            output = f"Script Error: {e}"
                         
-                        await send_log_to_client("--- Execution Finished ---")
+                        await send_response(output) # Send the collected output
+                        await send_response("--- Execution Finished ---")
+
             except Exception as e:
                 print(f"Error processing command: {e}")
 
@@ -89,8 +86,11 @@ async def command_handler(reader, writer):
     finally:
         print("Client disconnected")
         writer.close(); await writer.wait_closed()
-        ip = network.WLAN(network.STA_IF).ifconfig()[0]
-        display_status("READY", ip)
+        try:
+            ip = network.WLAN(network.STA_IF).ifconfig()[0]
+            display_status("READY", ip)
+        except:
+            display_status("DISCONNECTED")
 
 # --- Main Program Execution ---
 async def main():
@@ -116,10 +116,8 @@ async def main():
     print("TCP Server started on port 8888")
     await server.wait_closed()
 
-print("Boot: DeZer0 FINAL TCP")
+print("Boot: DeZer0 FINAL")
 try:
     asyncio.run(main())
 except OSError as e:
     if e.args[0] == 112: machine.reset()
-except Exception as e:
-    print(f"Fatal Error: {e}")

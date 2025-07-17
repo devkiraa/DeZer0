@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io'; // Use the core socket library
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 enum WifiConnectionState { disconnected, connecting, connected, error }
@@ -21,26 +21,17 @@ class WifiService with ChangeNotifier {
     print('Connecting TCP to $ipAddress:8888');
 
     try {
-      // Connect a raw TCP socket to port 8888
       _socket = await Socket.connect(ipAddress, 8888, timeout: const Duration(seconds: 5));
       _connectionState = WifiConnectionState.connected;
       print('TCP Connected!');
       notifyListeners();
 
-      // Listen for newline-terminated data from the ESP32
       _socket!.cast<List<int>>().transform(utf8.decoder).transform(const LineSplitter()).listen(
         (line) {
-          print('Received: $line');
           _logStreamController.add(line);
         },
-        onDone: () {
-          print('Remote closed connection.');
-          disconnect();
-        },
-        onError: (err) {
-          print('Socket error: $err');
-          disconnect();
-        },
+        onDone: () => disconnect(),
+        onError: (err) => disconnect(),
         cancelOnError: true,
       );
     } catch (e) {
@@ -51,20 +42,17 @@ class WifiService with ChangeNotifier {
 
   void sendCommand(String json) {
     if (_connectionState == WifiConnectionState.connected && _socket != null) {
-      // Send the JSON command followed by a newline character
       final msg = json.trim() + '\n';
       try {
         _socket!.write(msg);
         print('Sent: $msg');
       } catch (e) {
-        print('Send failed: $e');
         disconnect();
       }
     }
   }
 
   void disconnect() {
-    print('Disconnecting...');
     try {
       _socket?.destroy();
     } catch (_) {}

@@ -7,27 +7,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/tool_package.dart';
 
 class AppManagementService {
-  static final AppManagementService _instance = AppManagementService._internal();
-  factory AppManagementService() => _instance;
+  // --- Singleton Setup ---
+  static final AppManagementService instance = AppManagementService._internal();
+  factory AppManagementService() => instance;
   AppManagementService._internal();
 
   final ValueNotifier<Map<String, String>> installedTools = ValueNotifier({});
   static const _storageKey = 'installed_tools';
   String _appDocsPath = '';
+  bool _isInitialized = false;
 
-  // This must be called once when the app starts
   Future<void> init() async {
-    // Get the app's private documents directory path
+    if (_isInitialized) return;
     final directory = await getApplicationDocumentsDirectory();
     _appDocsPath = directory.path;
     
-    // Load the list of installed tools from shared_preferences
     final prefs = await SharedPreferences.getInstance();
     final String? savedToolsJson = prefs.getString(_storageKey);
     if (savedToolsJson != null) {
       final Map<String, dynamic> savedTools = json.decode(savedToolsJson);
       installedTools.value = savedTools.map((key, value) => MapEntry(key, value.toString()));
     }
+    _isInitialized = true;
   }
 
   Future<void> _save() async {
@@ -35,48 +36,36 @@ class AppManagementService {
     await prefs.setString(_storageKey, json.encode(installedTools.value));
   }
   
-  bool isInstalled(String toolId) {
-    return installedTools.value.containsKey(toolId);
-  }
-  
-  String getInstalledVersion(String toolId) {
-    return installedTools.value[toolId] ?? "";
-  }
+  bool isInstalled(String toolId) => installedTools.value.containsKey(toolId);
+  String getInstalledVersion(String toolId) => installedTools.value[toolId] ?? "";
 
-  // Save the downloaded script to a file in the correct directory
   Future<void> installTool(ToolPackage tool, Uint8List scriptBytes) async {
-    if (_appDocsPath.isEmpty) await init(); // Ensure path is initialized
-
-    // FIX: Construct the full, correct path inside the app's directory
+    if (!_isInitialized) await init();
     final file = File('$_appDocsPath/${tool.id}.py');
     await file.writeAsBytes(scriptBytes);
     print("Installed ${tool.name} to ${file.path}");
 
-    if (!isInstalled(tool.id) || getInstalledVersion(tool.id) != tool.version) {
-      final currentTools = Map<String, String>.from(installedTools.value);
-      currentTools[tool.id] = tool.version;
-      installedTools.value = currentTools;
-      await _save();
-    }
+    final currentTools = Map<String, String>.from(installedTools.value);
+    currentTools[tool.id] = tool.version;
+    installedTools.value = currentTools;
+    await _save();
   }
 
-  // Read the script from the correct file path
   Future<String?> getScript(String toolId) async {
     if (!isInstalled(toolId)) return null;
-    if (_appDocsPath.isEmpty) await init();
-
+    if (!_isInitialized) await init();
     try {
       final file = File('$_appDocsPath/$toolId.py');
       return await file.readAsString();
     } catch (e) {
+      print("Error loading script file: $e");
       return null;
     }
   }
 
-  // Delete the script file from the correct path
   Future<void> uninstallTool(String toolId) async {
     if (isInstalled(toolId)) {
-      if (_appDocsPath.isEmpty) await init();
+      if (!_isInitialized) await init();
       try {
         final file = File('$_appDocsPath/$toolId.py');
         if (await file.exists()) {

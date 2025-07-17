@@ -15,7 +15,7 @@ class RunToolScreen extends StatefulWidget {
 }
 
 class _RunToolScreenState extends State<RunToolScreen> {
-  final AppManagementService _appManagementService = AppManagementService();
+  final AppManagementService _appManagementService = AppManagementService.instance;
   StreamSubscription? _logSubscription;
   
   final List<String> _consoleLogs = [];
