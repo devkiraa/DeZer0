@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/wifi_service.dart';
 import '../services/app_management_service.dart';
-import '../services/marketplace_service.dart'; // FIX: Add this missing import
+import '../services/marketplace_service.dart';
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
 import 'tool_detail_screen.dart';
@@ -99,18 +99,18 @@ class _ToolsScreenState extends State<ToolsScreen> {
     });
   }
 
-  void _navigateToDetail(ToolPackage tool) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ToolDetailScreen(
-          tool: tool,
-          wifiService: widget.wifiService,
-          appManagementService: widget.appManagementService,
-        ),
+void _navigateToDetail(ToolPackage tool) {
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (context) => ToolDetailScreen(
+        tool: tool,
+        wifiService: widget.wifiService,
+        appManagementService: widget.appManagementService,
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {

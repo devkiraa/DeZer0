@@ -1,4 +1,4 @@
-# boot.py - Final TCP JSON Server
+# boot.py - Final version with a sandboxed script execution engine
 
 import machine
 import time
@@ -6,6 +6,8 @@ import uasyncio as asyncio
 import ujson
 import esp32
 import network
+import os
+import ubinascii
 
 # --- WIFI CREDENTIALS ---
 WIFI_SSID = "KIRANFI"
@@ -17,8 +19,7 @@ i2c = machine.I2C(0, scl=machine.Pin(22), sda=machine.Pin(21))
 try:
     from ssd1306 import SSD1306_I2C
     oled = SSD1306_I2C(128, 64, i2c)
-except ImportError:
-    oled = None
+except ImportError: oled = None
 
 def display_status(line1, line2=""):
     if oled:
@@ -28,46 +29,58 @@ def display_status(line1, line2=""):
         oled.show()
     print(line1, line2)
 
-# --- Tool Functions ---
-def get_device_info():
-    mac = ubinascii.hexlify(network.WLAN(network.STA_IF).config('mac'),':').decode()
-    return {
-        "type": "device_info", "firmware_version": "8.0-TCP",
-        "mac_address": mac.upper(),
-    }
-
 # --- TCP Server Logic ---
 async def command_handler(reader, writer):
     addr = writer.get_extra_info('peername')
     print(f"Client connected from {addr}")
     display_status("CLIENT CONNECTED")
+    
+    async def send_log_to_client(log_message):
+        try:
+            writer.write((str(log_message) + '\n').encode('utf-8'))
+            await writer.drain()
+        except Exception as e:
+            print(f"Failed to send log: {e}")
+
     try:
         while True:
-            # Read data until a newline character
             data = await reader.readline()
-            if not data:
-                break
+            if not data: break
             
             message = data.decode().strip()
-            print("Command received:", message)
+            print("Command received (first 50 chars):", message[:50])
             
             try:
                 command_json = ujson.loads(message)
                 cmd = command_json.get("command")
                 
-                # The script execution engine
+                # --- SCRIPT EXECUTION ENGINE ---
                 if cmd == "execute_script":
                     script_to_run = command_json.get("script")
                     if script_to_run:
-                        print("--- Executing Script ---")
+                        # FIX: Create a dictionary of all the modules and functions
+                        # that we want to make available to the scripts.
+                        script_globals = {
+                            "send_log": send_log_to_client,
+                            "ujson": ujson,
+                            "network": network,
+                            "time": time,
+                            "machine": machine,
+                            "esp32": esp32,
+                            "ubinascii": ubinascii,
+                            "__name__": "__main__", # Makes scripts behave like they are the main file
+                        }
+                        
+                        await send_log_to_client("--- Executing Script ---")
                         try:
-                            # Note: exec() is powerful. In a production system,
-                            # you would want to sandbox this.
-                            exec(script_to_run)
+                            # Decode the script from Base64
+                            script_code = ubinascii.a2b_base64(script_to_run).decode()
+                            # Execute the script within the 'sandbox' of our globals
+                            exec(script_code, script_globals)
                         except Exception as e:
-                            print(f"Script Error: {e}")
-                        print("--- Execution Finished ---")
-
+                            await send_log_to_client(f"Script Error: {e}")
+                        
+                        await send_log_to_client("--- Execution Finished ---")
             except Exception as e:
                 print(f"Error processing command: {e}")
 
@@ -75,8 +88,7 @@ async def command_handler(reader, writer):
         print(f"Connection error: {e}")
     finally:
         print("Client disconnected")
-        writer.close()
-        await writer.wait_closed()
+        writer.close(); await writer.wait_closed()
         ip = network.WLAN(network.STA_IF).ifconfig()[0]
         display_status("READY", ip)
 
@@ -94,14 +106,12 @@ async def main():
             await asyncio.sleep_ms(200)
 
     if not sta_if.isconnected():
-        display_status("WIFI FAILED")
-        return
+        display_status("WIFI FAILED"); return
 
     ip = sta_if.ifconfig()[0]
     display_status("READY", ip)
     print("Connected! IP Address:", ip)
 
-    # Start a TCP server on port 8888
     server = await asyncio.start_server(command_handler, "0.0.0.0", 8888)
     print("TCP Server started on port 8888")
     await server.wait_closed()
@@ -110,8 +120,6 @@ print("Boot: DeZer0 FINAL TCP")
 try:
     asyncio.run(main())
 except OSError as e:
-    if e.args[0] == 112: # EADDRINUSE
-        print("Address in use, resetting...")
-        machine.reset()
+    if e.args[0] == 112: machine.reset()
 except Exception as e:
     print(f"Fatal Error: {e}")

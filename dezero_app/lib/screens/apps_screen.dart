@@ -4,8 +4,8 @@ import '../services/marketplace_service.dart';
 import '../services/wifi_service.dart';
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
-import 'tool_detail_screen.dart';
 import 'run_tool_screen.dart';
+import 'tool_detail_screen.dart';
 
 class AppsScreen extends StatefulWidget {
   final AppManagementService appManagementService;
@@ -32,7 +32,7 @@ class _AppsScreenState extends State<AppsScreen> {
     widget.appManagementService.installedTools.addListener(_filterInstalledTools);
     _initialize();
   }
-
+  
   @override
   void dispose() {
     widget.appManagementService.installedTools.removeListener(_filterInstalledTools);
@@ -54,6 +54,18 @@ class _AppsScreenState extends State<AppsScreen> {
     if (mounted) setState(() { _installedPackages = filtered; });
   }
 
+  void _navigateToRunScreen(ToolPackage tool) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RunToolScreen(
+          tool: tool,
+          wifiService: widget.wifiService,
+        )
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -70,30 +82,10 @@ class _AppsScreenState extends State<AppsScreen> {
                     return ToolListItem(
                       tool: tool,
                       isInstalled: true,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RunToolScreen(
-                              tool: tool,
-                              wifiService: widget.wifiService,
-                            ),
-                          ),
-                        );
-                      },
+                      onTap: () => _navigateToRunScreen(tool),
                       onInstall: () {},
                       onUninstall: () => widget.appManagementService.uninstallTool(tool.id),
-                      onRun: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RunToolScreen(
-                              tool: tool,
-                              wifiService: widget.wifiService,
-                            ),
-                          ),
-                        );
-                      },
+                      onRun: () => _navigateToRunScreen(tool),
                     );
                   },
                 ),

@@ -66,7 +66,6 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
   }
 
   Future<void> _fetchChangelog() async {
-    // In our new architecture, the changelog comes from the manifest directly
     if (mounted) {
       setState(() {
         _changelog = widget.tool.changelog;
@@ -96,7 +95,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
     Navigator.push(context, MaterialPageRoute(
       builder: (context) => RunToolScreen(
         tool: widget.tool,
-        wifiService: widget.wifiService, // Pass the service along
+        wifiService: widget.wifiService,
       )
     ));
   }
@@ -121,7 +120,7 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
         ),
       );
     }
-    
+
     if (_isUpdateAvailable) {
       return FilledButton.icon(
         icon: const Icon(Icons.system_update_alt),
@@ -149,59 +148,77 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
     return Scaffold(
       appBar: AppBar(title: Text(widget.tool.name)),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(Icons.extension, size: 60, color: Theme.of(context).primaryColor),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            Container(
+              width: double.infinity,
+              color: Theme.of(context).colorScheme.surface,
+              padding: const EdgeInsets.all(24.0),
+              child: Row(
+                children: [
+                  Icon(Icons.extension, size: 72, color: Theme.of(context).primaryColor),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(widget.tool.name, style: Theme.of(context).textTheme.headlineSmall),
+                        const SizedBox(height: 4),
+                        Text(widget.tool.category, style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      Text(widget.tool.name, style: Theme.of(context).textTheme.headlineSmall),
-                      Text(widget.tool.category, style: Theme.of(context).textTheme.bodyMedium),
+                      _buildInfoChip("Version", widget.tool.version),
+                      _buildInfoChip("Size", widget.tool.size),
                     ],
                   ),
-                )
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildInfoChip("Version", widget.tool.version),
-                _buildInfoChip("Size", widget.tool.size),
-              ],
-            ),
-            const SizedBox(height: 16),
-            SizedBox(width: double.infinity, height: 50, child: _buildActionButton()),
-            if (_isInstalled)
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _uninstall,
-                  child: const Text("Uninstall", style: TextStyle(color: Colors.red, fontSize: 12)),
-                ),
+                  const SizedBox(height: 12),
+                  _buildActionButton(),
+                  if (_isInstalled)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _uninstall,
+                        child: const Text("Uninstall", style: TextStyle(color: Colors.red, fontSize: 12)),
+                      ),
+                    ),
+                ],
               ),
-            const SizedBox(height: 24),
-            Text("Description", style: Theme.of(context).textTheme.titleLarge),
-            const Divider(),
-            Text(widget.tool.description),
-            const SizedBox(height: 24),
-            Text("Changelog", style: Theme.of(context).textTheme.titleLarge),
-            const Divider(),
-            Text(_changelog),
-            const SizedBox(height: 24),
-            Text("Developer", style: Theme.of(context).textTheme.titleLarge),
-            const Divider(),
-            ListTile(
-              leading: const FaIcon(FontAwesomeIcons.github),
-              title: const Text("Repository"),
-              onTap: _launchRepoUrl,
             ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("About this tool", style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(widget.tool.description),
+                  const SizedBox(height: 24),
+                  Text("What's new", style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Text(_changelog),
+                  const SizedBox(height: 24),
+                  Text("Developer contact", style: Theme.of(context).textTheme.titleLarge),
+                  ListTile(
+                    leading: const FaIcon(FontAwesomeIcons.github),
+                    title: const Text("Repository"),
+                    onTap: _launchRepoUrl,
+                  ),
+                ],
+              ),
+            )
           ],
         ),
       ),
