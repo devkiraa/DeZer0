@@ -13,7 +13,7 @@ class DeviceScreen extends StatefulWidget {
 
 class _DeviceScreenState extends State<DeviceScreen> {
   StreamSubscription<String>? _logSubscription;
-  final TextEditingController _ipController = TextEditingController();
+  final TextEditingController _ipController = TextEditingController(text: '192.168.0.100');
 
   String _firmwareVersion = "-";
   String _buildDate = "-";
@@ -30,8 +30,9 @@ class _DeviceScreenState extends State<DeviceScreen> {
     widget.wifiService.addListener(_onStateChanged);
     _logSubscription = widget.wifiService.logStream.listen(_onDataReceived);
 
-    if (widget.wifiService.connectionState == WifiConnectionState.connected) {
-      _fetchDeviceInfoWithDelay();
+    // Auto-connect using default IP if desired:
+    if (_ipController.text.isNotEmpty) {
+      widget.wifiService.connect(_ipController.text);
     }
   }
 
@@ -55,8 +56,7 @@ class _DeviceScreenState extends State<DeviceScreen> {
   void _fetchDeviceInfoWithDelay() {
     _isFetchingInfo = true;
     Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted &&
-          widget.wifiService.connectionState == WifiConnectionState.connected) {
+      if (mounted && widget.wifiService.connectionState == WifiConnectionState.connected) {
         widget.wifiService.sendCommand('{"command":"get_device_info"}');
       }
     });
@@ -84,14 +84,15 @@ class _DeviceScreenState extends State<DeviceScreen> {
   }
 
   void _handleConnect() {
-    if (_ipController.text.trim().isEmpty) {
+    final ip = _ipController.text.trim();
+    if (ip.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please enter an IP address.")),
       );
       return;
     }
     FocusScope.of(context).unfocus();
-    widget.wifiService.connect(_ipController.text.trim());
+    widget.wifiService.connect(ip);
   }
 
   @override

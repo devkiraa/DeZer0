@@ -23,7 +23,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _widgetOptions = <Widget>[
       DeviceScreen(wifiService: _wifiService),
-      // FIX: Pass both services to the AppsScreen
+      // FIX: Pass both required services
       AppsScreen(
         appManagementService: _appManagementService,
         wifiService: _wifiService,

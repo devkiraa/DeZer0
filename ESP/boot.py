@@ -1,16 +1,21 @@
-# boot.py — with WebSocket + TCP‑JSON fallback
+# boot.py - Final TCP JSON Server
 
-import machine, time, uasyncio as asyncio, ujson, esp32, network
-import usocket as socket, uhashlib as hashlib, ubinascii, ure
-from ssd1306 import SSD1306_I2C  # assumed present; wrap in try/except if needed
+import machine
+import time
+import uasyncio as asyncio
+import ujson
+import esp32
+import network
 
-# — Wi‑Fi credentials —
+# --- WIFI CREDENTIALS ---
 WIFI_SSID = "KIRANFI"
 WIFI_PASSWORD = "m1670529"
+# -------------------------
 
-# — OLED setup (optional) —
+# --- OLED Display Setup ---
 i2c = machine.I2C(0, scl=machine.Pin(22), sda=machine.Pin(21))
 try:
+    from ssd1306 import SSD1306_I2C
     oled = SSD1306_I2C(128, 64, i2c)
 except ImportError:
     oled = None
@@ -18,142 +23,95 @@ except ImportError:
 def display_status(line1, line2=""):
     if oled:
         oled.fill(0)
-        oled.text(line1[:16], 0, 20)
-        if line2: oled.text(line2[:16], 0, 35)
+        oled.text(line1[:16], 2, 28)
+        if line2: oled.text(line2[:16], 2, 40)
         oled.show()
     print(line1, line2)
 
-# — Utility commands —
+# --- Tool Functions ---
 def get_device_info():
-    mac = ubinascii.hexlify(network.WLAN(network.STA_IF).config('mac'),':').decode().upper()
-    cpu_mhz = machine.freq() // 1_000_000
-    used, free = esp32.heap_info()
+    mac = ubinascii.hexlify(network.WLAN(network.STA_IF).config('mac'),':').decode()
     return {
-        "type":"device_info", "firmware_version":"7.0-FINAL", "build_date":"2025-07-16",
-        "mac_address":mac, "cpu_freq":cpu_mhz,
-        "ram_used":used, "ram_total":used+free,
-        "flash_total":4*1024*1024
+        "type": "device_info", "firmware_version": "8.0-TCP",
+        "mac_address": mac.upper(),
     }
 
-def scan_wifi():
-    sta = network.WLAN(network.STA_IF)
-    nets = sta.scan()
-    return {
-        "type":"wifi_scan_results",
-        "networks":[{"ssid":s.decode(), "rssi":r} for s, *_ ,r,_ in nets[:5]]
-    }
-
-# — Connection handler with WebSocket + TCP‑JSON fallback —
-async def handle_websocket(reader, writer):
+# --- TCP Server Logic ---
+async def command_handler(reader, writer):
+    addr = writer.get_extra_info('peername')
+    print(f"Client connected from {addr}")
     display_status("CLIENT CONNECTED")
-    print("Client connected, peeking for WebSocket handshake…")
-
-    # read first 1KB or until newline
-    initial = await reader.read(1024)
-    # try WebSocket handshake
-    match = ure.search(b"Sec-WebSocket-Key: (.*)\r\n", initial)
-    if match:
-        # — WebSocket path (unchanged) —
-        key = match.group(1)
-        magic = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-        resp = ubinascii.b2a_base64(hashlib.sha1(key + magic).digest()).strip()
-        hdr = (b"HTTP/1.1 101 Switching Protocols\r\n"
-               b"Upgrade: websocket\r\n"
-               b"Connection: Upgrade\r\n"
-               b"Sec-WebSocket-Accept: " + resp + b"\r\n\r\n")
-        writer.write(hdr)
-        await writer.drain()
-        print("WebSocket handshake complete.")
-
-        # process frames
-        while True:
-            hdr = await reader.readexactly(2)
-            opcode = hdr[0] & 0x0F
-            if opcode == 0x8: break  # close frame
-            length = hdr[1] & 0x7F
-            if length == 126:
-                length = int.from_bytes(await reader.readexactly(2), "big")
-            mask = await reader.readexactly(4)
-            data = await reader.readexactly(length)
-            msg = bytes(b ^ mask[i%4] for i, b in enumerate(data)).decode()
-            cmd = ujson.loads(msg).get("command")
-            resp_obj = {}
-            if cmd == "get_device_info": resp_obj = get_device_info()
-            elif cmd == "scan_wifi":      resp_obj = scan_wifi()
-            # send back
-            out = ujson.dumps(resp_obj)
-            frame = bytearray([0x81])
-            L = len(out)
-            if L < 126: frame.append(L)
-            else:
-                frame.append(126); frame.extend(L.to_bytes(2, "big"))
-            writer.write(frame + out.encode())
-            await writer.drain()
-
-    else:
-        # — TCP JSON fallback —
-        print("No Sec‑WebSocket‑Key found; entering TCP‑JSON mode.")
-        display_status("TCP JSON MODE")
-        # process the remainder of 'initial' plus future lines
-        buf = initial
-        while True:
-            # accumulate until newline
-            if b"\n" not in buf:
-                more = await reader.read(256)
-                if not more:
-                    break
-                buf += more
-            line, _, buf = buf.partition(b"\n")
-            try:
-                data = ujson.loads(line.decode().strip())
-            except:
-                continue
-            cmd = data.get("command")
-            resp_obj = {}
-            if cmd == "get_device_info": resp_obj = get_device_info()
-            elif cmd == "scan_wifi":      resp_obj = scan_wifi()
-            # write back as JSON + newline
-            writer.write(ujson.dumps(resp_obj).encode() + b"\n")
-            await writer.drain()
-
-    # teardown
-    print("Client disconnected.")
-    writer.close()
-    await writer.wait_closed()
     try:
+        while True:
+            # Read data until a newline character
+            data = await reader.readline()
+            if not data:
+                break
+            
+            message = data.decode().strip()
+            print("Command received:", message)
+            
+            try:
+                command_json = ujson.loads(message)
+                cmd = command_json.get("command")
+                
+                # The script execution engine
+                if cmd == "execute_script":
+                    script_to_run = command_json.get("script")
+                    if script_to_run:
+                        print("--- Executing Script ---")
+                        try:
+                            # Note: exec() is powerful. In a production system,
+                            # you would want to sandbox this.
+                            exec(script_to_run)
+                        except Exception as e:
+                            print(f"Script Error: {e}")
+                        print("--- Execution Finished ---")
+
+            except Exception as e:
+                print(f"Error processing command: {e}")
+
+    except Exception as e:
+        print(f"Connection error: {e}")
+    finally:
+        print("Client disconnected")
+        writer.close()
+        await writer.wait_closed()
         ip = network.WLAN(network.STA_IF).ifconfig()[0]
         display_status("READY", ip)
-    except:
-        display_status("DISCONNECTED")
 
-# — Main entry point —
+# --- Main Program Execution ---
 async def main():
     display_status("DeZer0 Booting")
-    sta = network.WLAN(network.STA_IF)
-    if not sta.isconnected():
+    
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
         display_status("Connecting to", WIFI_SSID)
-        sta.active(True)
-        sta.connect(WIFI_SSID, WIFI_PASSWORD)
-        deadline = time.time() + 15
-        while not sta.isconnected() and time.time() < deadline:
-            await asyncio.sleep_ms(100)
-    if not sta.isconnected():
-        display_status("WIFI FAILED"); return
-    ip = sta.ifconfig()[0]
-    display_status("READY", ip)
-    print("IP:", ip)
+        sta_if.active(True)
+        sta_if.connect(WIFI_SSID, WIFI_PASSWORD)
+        timeout = time.time() + 15
+        while not sta_if.isconnected() and time.time() < timeout:
+            await asyncio.sleep_ms(200)
 
-    server = await asyncio.start_server(handle_websocket, "0.0.0.0", 80)
+    if not sta_if.isconnected():
+        display_status("WIFI FAILED")
+        return
+
+    ip = sta_if.ifconfig()[0]
+    display_status("READY", ip)
+    print("Connected! IP Address:", ip)
+
+    # Start a TCP server on port 8888
+    server = await asyncio.start_server(command_handler, "0.0.0.0", 8888)
+    print("TCP Server started on port 8888")
     await server.wait_closed()
 
-print("Boot: DeZer0 FINAL")
+print("Boot: DeZer0 FINAL TCP")
 try:
     asyncio.run(main())
 except OSError as e:
-    if e.args[0] == 112:  # EADDRINUSE
+    if e.args[0] == 112: # EADDRINUSE
+        print("Address in use, resetting...")
         machine.reset()
-    else:
-        print("Fatal OSError:", e)
 except Exception as e:
-    print("Fatal error:", e)
-
+    print(f"Fatal Error: {e}")

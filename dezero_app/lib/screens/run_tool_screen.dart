@@ -40,7 +40,7 @@ class _RunToolScreenState extends State<RunToolScreen> {
     final content = await _appManagementService.getScript(widget.tool.id);
     if (mounted) {
       setState(() {
-        _scriptContent = content ?? "Error: Could not load script file.";
+        _scriptContent = content ?? "Error: Could not load script.";
         _isLoadingScript = false;
       });
     }
@@ -48,29 +48,6 @@ class _RunToolScreenState extends State<RunToolScreen> {
 
   void _onDataReceived(String data) {
     if (!mounted) return;
-
-    // Check for our special RESULT: prefix
-    if (data.startsWith("RESULT:")) {
-      final jsonString = data.substring(7);
-      try {
-        final jsonData = jsonDecode(jsonString);
-        // Handle Wi-Fi scan results specifically for nice formatting
-        if (jsonData['type'] == 'wifi_scan_results') {
-          final networks = jsonData['networks'] as List;
-          setState(() {
-            _consoleLogs.insert(0, "✅ Found ${networks.length} networks.");
-            for (var net in networks) {
-              _consoleLogs.insert(0, "  - ${net['ssid']} (${net['rssi']} dBm)");
-            }
-          });
-          return;
-        }
-      } catch (e) {
-        // Not valid JSON, just log it raw
-      }
-    }
-    
-    // Add any other log message to the console
     setState(() {
       _consoleLogs.insert(0, data);
       if (data.contains("--- Execution Finished ---")) {
@@ -82,13 +59,14 @@ class _RunToolScreenState extends State<RunToolScreen> {
   void _executeScript() {
     if (_isLoadingScript || _isExecuting || !_scriptContent.startsWith("import")) return;
     
-    final command = {
-      "command": "execute_script",
-      "script": _scriptContent
-    };
+    final scriptBytes = utf8.encode(_scriptContent);
+    final scriptBase64 = base64Encode(scriptBytes);
+    
+    final command = {"command": "execute_script", "script": scriptBase64};
     
     setState(() {
       _isExecuting = true;
+      _consoleLogs.clear();
       _consoleLogs.insert(0, "-> Executing '${widget.tool.name}' on DeZer0...");
     });
     widget.wifiService.sendCommand(jsonEncode(command));
@@ -97,9 +75,7 @@ class _RunToolScreenState extends State<RunToolScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.tool.name),
-      ),
+      appBar: AppBar(title: Text(widget.tool.name)),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -107,13 +83,11 @@ class _RunToolScreenState extends State<RunToolScreen> {
             padding: const EdgeInsets.all(16.0),
             child: FilledButton.icon(
               icon: _isExecuting 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3,))
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
                 : const Icon(Icons.play_arrow),
               label: Text(_isExecuting ? "Executing..." : "Execute on DeZer0"),
               onPressed: (_isLoadingScript || _isExecuting || widget.wifiService.connectionState != WifiConnectionState.connected) ? null : _executeScript,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 15),
-              ),
+              style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15)),
             ),
           ),
           const Divider(height: 1),
@@ -134,7 +108,7 @@ class _RunToolScreenState extends State<RunToolScreen> {
           ),
           Expanded(
             child: Container(
-              color: Colors.black.withOpacity(0.05),
+              color: Theme.of(context).cardColor.withOpacity(0.5),
               child: ListView.builder(
                 padding: const EdgeInsets.all(8.0),
                 reverse: true,

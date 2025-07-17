@@ -76,7 +76,7 @@ class WifiService with ChangeNotifier {
   }
 
   void _fail() {
-    disconnect();jsjjf
+    disconnect();
     _connectionState = WifiConnectionState.error;
     notifyListeners();
   }

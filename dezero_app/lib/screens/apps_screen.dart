@@ -31,7 +31,7 @@ class _AppsScreenState extends State<AppsScreen> {
     widget.appManagementService.installedTools.addListener(_filterInstalledTools);
     _initialize();
   }
-
+  
   @override
   void dispose() {
     widget.appManagementService.installedTools.removeListener(_filterInstalledTools);
@@ -43,22 +43,15 @@ class _AppsScreenState extends State<AppsScreen> {
       _allTools = await _marketplaceService.fetchTools();
       _filterInstalledTools();
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() { _isLoading = false; });
     }
   }
 
   void _filterInstalledTools() {
     final installedIds = widget.appManagementService.installedTools.value;
-    final filtered =
-        _allTools.where((tool) => installedIds.containsKey(tool.id)).toList();
+    final filtered = _allTools.where((tool) => installedIds.containsKey(tool.id)).toList();
     if (mounted) {
-      setState(() {
-        _installedPackages = filtered;
-      });
+      setState(() { _installedPackages = filtered; });
     }
   }
 
@@ -69,19 +62,9 @@ class _AppsScreenState extends State<AppsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _installedPackages.isEmpty
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20.0),
-                    child: Text(
-                      "No apps installed.\nGo to the Tools tab to add some.",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18, color: Colors.grey),
-                    ),
-                  ),
-                )
+              ? const Center(child: Text("No apps installed."))
               : ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                   itemCount: _installedPackages.length,
                   itemBuilder: (context, index) {
                     final tool = _installedPackages[index];
@@ -92,23 +75,24 @@ class _AppsScreenState extends State<AppsScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => RunToolScreen(
-                                    tool: tool,
-                                    wifiService: widget.wifiService,
-                                  )),
+                            builder: (context) => RunToolScreen(
+                              tool: tool,
+                              wifiService: widget.wifiService,
+                            )
+                          ),
                         );
                       },
                       onInstall: () {},
-                      onUninstall: () =>
-                          widget.appManagementService.uninstallTool(tool.id),
+                      onUninstall: () => widget.appManagementService.uninstallTool(tool.id),
                       onRun: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (context) => RunToolScreen(
-                                    tool: tool,
-                                    wifiService: widget.wifiService,
-                                  )),
+                            builder: (context) => RunToolScreen(
+                              tool: tool,
+                              wifiService: widget.wifiService,
+                            )
+                          ),
                         );
                       },
                     );

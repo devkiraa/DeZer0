@@ -14,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const primaryColor = Colors.orange;
-    const backgroundColor = Color(0xFFF2F2F7);
+    const backgroundColor = Color.fromARGB(255, 255, 255, 255);
 
     return MaterialApp(
       title: 'DeZer0 App',
