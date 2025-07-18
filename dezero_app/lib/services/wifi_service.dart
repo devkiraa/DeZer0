@@ -26,14 +26,17 @@ class WifiService with ChangeNotifier {
       print('TCP Connected!');
       notifyListeners();
 
-      _socket!.cast<List<int>>().transform(utf8.decoder).transform(const LineSplitter()).listen(
-        (line) {
-          _logStreamController.add(line);
-        },
-        onDone: () => disconnect(),
-        onError: (err) => disconnect(),
-        cancelOnError: true,
-      );
+      _socket!.cast<List<int>>()
+  .transform(utf8.decoder)
+  .transform(const LineSplitter())
+  .listen(
+    (line) {
+      _logStreamController.add(line);
+    },
+    onDone: () => disconnect(),
+    onError: (err) => disconnect(),
+    cancelOnError: true,
+  );
     } catch (e) {
       print('Connect failed: $e');
       _fail();
@@ -41,16 +44,16 @@ class WifiService with ChangeNotifier {
   }
 
   void sendCommand(String json) {
-    if (_connectionState == WifiConnectionState.connected && _socket != null) {
-      final msg = json.trim() + '\n';
-      try {
-        _socket!.write(msg);
-        print('Sent: $msg');
-      } catch (e) {
-        disconnect();
-      }
+  if (_connectionState == WifiConnectionState.connected && _socket != null) {
+    final msg = json.trim() + '\n';
+    try {
+      _socket!.write(msg);
+      print('Sent: $msg');
+    } catch (e) {
+      disconnect();
     }
   }
+}
 
   void disconnect() {
     try {
