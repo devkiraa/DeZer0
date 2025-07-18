@@ -1,4 +1,4 @@
-# main.py - Final, Stable Application Server
+# main.py - Final, Return-Based Runtime Engine
 
 import uasyncio as asyncio
 import network
@@ -24,7 +24,7 @@ def display_status(line1, line2=""):
         oled.show()
     print(line1, line2)
 
-# --- Tool Functions ---
+# --- Built-in Command Function ---
 def get_device_info():
     mac = ubinascii.hexlify(network.WLAN(network.STA_IF).config('mac'),':').decode().upper()
     cpu_freq = machine.freq() // 1000000
@@ -32,7 +32,7 @@ def get_device_info():
     alloc = gc.mem_alloc()
     free = gc.mem_free()
     return {
-        "type": "device_info", "firmware_version": "8.2-FINAL",
+        "type": "device_info", "firmware_version": "9.0-FINAL",
         "mac_address": mac, "cpu_freq": cpu_freq,
         "ram_used": alloc, "ram_total": alloc + free
     }
@@ -43,41 +43,58 @@ async def command_handler(reader, writer):
     print(f"Client connected from {addr}")
     display_status("CLIENT CONNECTED")
     
-    buffer = b''
     try:
         while True:
-            chunk = await reader.read(64)
-            if not chunk: break
+            data = await reader.readline()
+            if not data: break
             
-            buffer += chunk
+            message = data.decode().strip()
+            if not message: continue
             
-            while b'\n' in buffer:
-                line, _, buffer = buffer.partition(b'\n')
-                message = line.decode().strip()
-                print("Command received:", message)
-                
-                try:
-                    command_json = ujson.loads(message)
-                    cmd = command_json.get("command")
-                    response = {}
+            try:
+                command_json = ujson.loads(message)
+                cmd = command_json.get("command")
 
-                    if cmd == "get_device_info":
-                        response = get_device_info()
+                if cmd == "get_device_info":
+                    response = get_device_info()
+                    writer.write((ujson.dumps(response) + '\n').encode('utf-8'))
+                    await writer.drain()
+                    print("Sent device info")
+
+                elif cmd == "execute_script":
+                    script_base64 = command_json.get("script", "")
+                    output = ""
+                    try:
+                        script_content = ubinascii.a2b_base64(script_base64).decode('utf-8')
+                        
+                        # Create a scope for the script to run in
+                        script_scope = {}
+                        # Execute the script to define its functions
+                        exec(script_content, script_scope)
+                        
+                        # The script MUST have a 'run_tool()' function
+                        if 'run_tool' in script_scope:
+                            # Execute the function and capture its return value
+                            output = script_scope['run_tool']() 
+                        else:
+                            output = "Script Error: No 'run_tool()' function found."
+                            
+                    except Exception as e:
+                        output = f"Script Error: {e}"
                     
-                    if response:
-                        writer.write((ujson.dumps(response) + '\n').encode('utf-8'))
-                        await writer.drain()
-                        print("Sent response")
+                    # Send the entire captured output back to the app
+                    writer.write((output + '\n').encode('utf-8'))
+                    await writer.drain()
+                    print(f"Script execution finished. Sent {len(output)} bytes.")
 
-                except Exception as e:
-                    print(f"Error processing command: {e}")
+            except Exception as e:
+                print(f"Error processing command: {e}")
 
     except Exception as e:
         print(f"Connection error: {e}")
     finally:
         print("Client disconnected")
-        writer.close()
-        await writer.wait_closed()
+        writer.close(); await writer.wait_closed()
         ip = network.WLAN(network.STA_IF).ifconfig()[0]
         display_status("READY", ip)
 
@@ -85,11 +102,9 @@ async def main():
     ip = network.WLAN(network.STA_IF).ifconfig()[0]
     print(f"Server starting on {ip}:8888")
     display_status("READY", ip)
-    
     gc.collect()
     
     server = await asyncio.start_server(command_handler, "0.0.0.0", 8888)
-    
     print("Server started successfully! Waiting for connections.")
     
     while True:
