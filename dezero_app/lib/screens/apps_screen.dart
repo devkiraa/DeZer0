@@ -5,7 +5,6 @@ import '../services/wifi_service.dart';
 import '../models/tool_package.dart';
 import '../widgets/tool_list_item.dart';
 import 'run_tool_screen.dart';
-import 'tool_detail_screen.dart';
 
 class AppsScreen extends StatefulWidget {
   final AppManagementService appManagementService;

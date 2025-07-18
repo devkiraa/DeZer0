@@ -11,6 +11,7 @@ Future<void> main() async {
   runApp(
     MultiProvider(
       providers: [
+        // This makes one single instance of WifiService available to the whole app
         ChangeNotifierProvider(create: (_) => WifiService()),
         Provider(create: (_) => AppManagementService.instance),
       ],

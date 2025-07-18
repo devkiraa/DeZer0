@@ -14,6 +14,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  // Create the service instances once
   final WifiService _wifiService = WifiService();
   final AppManagementService _appManagementService = AppManagementService.instance;
   late final List<Widget> _widgetOptions;
@@ -21,6 +22,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     super.initState();
+    // Pass the created services to the constructors of the screens
     _widgetOptions = <Widget>[
       DeviceScreen(wifiService: _wifiService),
       AppsScreen(
@@ -55,9 +57,18 @@ class _MainScreenState extends State<MainScreen> {
       ),
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(icon: Icon(Icons.wifi_tethering), label: 'Device'),
-          BottomNavigationBarItem(icon: Icon(Icons.apps), label: 'Apps'),
-          BottomNavigationBarItem(icon: Icon(Icons.build), label: 'Tools'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.wifi_tethering),
+            label: 'Device',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.apps),
+            label: 'Apps',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.build),
+            label: 'Tools',
+          ),
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
