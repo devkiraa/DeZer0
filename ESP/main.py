@@ -1,95 +1,105 @@
-# main.py - Final Asynchronous WebSocket Server
+# main.py - Final, Stable Application Server
 
-import machine
-import time
 import uasyncio as asyncio
-import ujson
-import esp32
 import network
-from websockets.server import serve
+import gc
+import ujson
+import machine
+import esp32
+import ubinascii
 
-# --- Global Objects & Setup ---
+# --- OLED and Helper Functions ---
 i2c = machine.I2C(0, scl=machine.Pin(22), sda=machine.Pin(21))
-led = machine.Pin(2, machine.Pin.OUT)
 try:
     from ssd1306 import SSD1306_I2C
     oled = SSD1306_I2C(128, 64, i2c)
 except ImportError:
     oled = None
 
-# --- UI & Status Functions ---
 def display_status(line1, line2=""):
     if oled:
         oled.fill(0)
-        oled.text(line1, int(64 - len(line1) * 4) if len(line1) < 16 else 0, 20)
-        if line2:
-            oled.text(line2, int(64 - len(line2) * 4) if len(line2) < 16 else 0, 35)
+        oled.text(line1[:16], 2, 28)
+        if line2: oled.text(line2[:16], 2, 40)
         oled.show()
     print(line1, line2)
 
 # --- Tool Functions ---
 def get_device_info():
+    mac = ubinascii.hexlify(network.WLAN(network.STA_IF).config('mac'),':').decode().upper()
+    cpu_freq = machine.freq() // 1000000
+    gc.collect()
+    alloc = gc.mem_alloc()
+    free = gc.mem_free()
     return {
-        "type": "device_info", "firmware_version": "5.1-ASYNC",
-        "build_date": "2025-07-15", "ram_total": esp32.heap_info()[0],
-        "ram_used": esp32.heap_info()[0] - esp32.heap_info()[1],
-        "flash_total": 4194304
+        "type": "device_info", "firmware_version": "8.2-FINAL",
+        "mac_address": mac, "cpu_freq": cpu_freq,
+        "ram_used": alloc, "ram_total": alloc + free
     }
 
-def scan_wifi():
-    sta_if = network.WLAN(network.STA_IF)
-    networks_found = sta_if.scan()
-    results = {"type": "wifi_scan_results", "networks": []}
-    for ssid, bssid, channel, rssi, authmode, hidden in networks_found[:5]:
-        results["networks"].append({"ssid": ssid.decode('utf-8', 'ignore'), "rssi": rssi})
-    return results
-
-# --- WebSocket Handler ---
-async def command_handler(websocket):
-    print("WebSocket client connected.")
+# --- TCP Server Logic ---
+async def command_handler(reader, writer):
+    addr = writer.get_extra_info('peername')
+    print(f"Client connected from {addr}")
     display_status("CLIENT CONNECTED")
-    try:
-        async for message in websocket:
-            print("Command received:", message)
-            try:
-                command_json = ujson.loads(message)
-                cmd = command_json.get("command")
-                response = {}
-                if cmd == "get_device_info": response = get_device_info()
-                elif cmd == "scan_wifi": response = scan_wifi()
-                
-                if response:
-                    await websocket.send(ujson.dumps(response))
-                    print("Sent response")
-            except Exception as e:
-                print(f"Error processing command: {e}")
-    except Exception as e:
-        print(f"WebSocket connection error: {e}")
-    finally:
-        print("Client disconnected.")
-        ip_address = network.WLAN(network.STA_IF).ifconfig()[0]
-        display_status("READY", ip_address)
-
-# --- Main Asynchronous Tasks ---
-async def main():
-    ip_address = network.WLAN(network.STA_IF).ifconfig()[0]
-    display_status("READY", ip_address)
     
-    server_task = asyncio.create_task(serve(command_handler, "0.0.0.0", 80))
-    led_task = asyncio.create_task(blink_task())
-    await asyncio.gather(server_task, led_task)
+    buffer = b''
+    try:
+        while True:
+            chunk = await reader.read(64)
+            if not chunk: break
+            
+            buffer += chunk
+            
+            while b'\n' in buffer:
+                line, _, buffer = buffer.partition(b'\n')
+                message = line.decode().strip()
+                print("Command received:", message)
+                
+                try:
+                    command_json = ujson.loads(message)
+                    cmd = command_json.get("command")
+                    response = {}
 
-async def blink_task():
-    # We will just blink slowly to indicate the server is running
+                    if cmd == "get_device_info":
+                        response = get_device_info()
+                    
+                    if response:
+                        writer.write((ujson.dumps(response) + '\n').encode('utf-8'))
+                        await writer.drain()
+                        print("Sent response")
+
+                except Exception as e:
+                    print(f"Error processing command: {e}")
+
+    except Exception as e:
+        print(f"Connection error: {e}")
+    finally:
+        print("Client disconnected")
+        writer.close()
+        await writer.wait_closed()
+        ip = network.WLAN(network.STA_IF).ifconfig()[0]
+        display_status("READY", ip)
+
+async def main():
+    ip = network.WLAN(network.STA_IF).ifconfig()[0]
+    print(f"Server starting on {ip}:8888")
+    display_status("READY", ip)
+    
+    gc.collect()
+    
+    server = await asyncio.start_server(command_handler, "0.0.0.0", 8888)
+    
+    print("Server started successfully! Waiting for connections.")
+    
     while True:
-        led.value(not led.value())
-        await asyncio.sleep_ms(1000)
+        await asyncio.sleep(10)
 
-# --- Program Entry Point ---
-try:
-    print("Starting main application...")
-    asyncio.run(main())
-except KeyboardInterrupt:
-    print("Application stopped.")
-except Exception as e:
-    print(f"An error occurred in main: {e}")
+# --- Main entry point ---
+if network.WLAN(network.STA_IF).isconnected():
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        print(f"Error in main: {e}")
+else:
+    print("Wi-Fi not connected. Halting.")

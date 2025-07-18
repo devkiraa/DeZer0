@@ -1,4 +1,4 @@
-# boot.py - Final version with 'return' based execution
+# boot.py - Final, Complete, Return-Based Runtime
 
 import machine
 import time
@@ -29,6 +29,19 @@ def display_status(line1, line2=""):
         oled.show()
     print(line1, line2)
 
+# --- Built-in Tool Function ---
+def get_device_info():
+    mac = ubinascii.hexlify(network.WLAN(network.STA_IF).config('mac'),':').decode().upper()
+    cpu_freq = machine.freq() // 1000000
+    gc.collect()
+    alloc = gc.mem_alloc()
+    free = gc.mem_free()
+    return {
+        "type": "device_info", "firmware_version": "9.0-FINAL",
+        "mac_address": mac, "cpu_freq": cpu_freq,
+        "ram_used": alloc, "ram_total": alloc + free
+    }
+
 # --- TCP Server Logic ---
 async def command_handler(reader, writer):
     addr = writer.get_extra_info('peername')
@@ -37,8 +50,7 @@ async def command_handler(reader, writer):
     
     async def send_response(data_to_send):
         try:
-            # All messages must end with a newline for the app to receive them
-            writer.write((data_to_send + '\n').encode('utf-8'))
+            writer.write((str(data_to_send) + '\n').encode('utf-8'))
             await writer.drain()
         except Exception as e:
             print(f"Failed to send response: {e}")
@@ -54,28 +66,30 @@ async def command_handler(reader, writer):
                 command_json = ujson.loads(message)
                 cmd = command_json.get("command")
                 
-                if cmd == "execute_script":
+                # --- COMMAND INTERPRETER ---
+                if cmd == "get_device_info":
+                    response = get_device_info()
+                    await send_response(ujson.dumps(response))
+
+                elif cmd == "execute_script":
                     script_b64 = command_json.get("script")
                     if script_b64:
                         await send_response("--- Executing Script ---")
                         output = ""
                         try:
                             script_code = ubinascii.a2b_base64(script_b64).decode()
-                            
-                            # Create a dictionary to hold the script's functions
                             script_scope = {}
                             exec(script_code, script_scope)
                             
-                            # The script MUST have a 'run_tool()' function
                             if 'run_tool' in script_scope:
-                                output = script_scope['run_tool']() # Execute the function and get its return value
+                                output = script_scope['run_tool']()
                             else:
                                 output = "Script Error: No 'run_tool()' function found."
                                 
                         except Exception as e:
                             output = f"Script Error: {e}"
                         
-                        await send_response(output) # Send the collected output
+                        await send_response(output)
                         await send_response("--- Execution Finished ---")
 
             except Exception as e:
@@ -86,11 +100,8 @@ async def command_handler(reader, writer):
     finally:
         print("Client disconnected")
         writer.close(); await writer.wait_closed()
-        try:
-            ip = network.WLAN(network.STA_IF).ifconfig()[0]
-            display_status("READY", ip)
-        except:
-            display_status("DISCONNECTED")
+        ip = network.WLAN(network.STA_IF).ifconfig()[0]
+        display_status("READY", ip)
 
 # --- Main Program Execution ---
 async def main():
