@@ -20,11 +20,12 @@ export class MarketplaceService {
       }
 
       const contents = await response.json();
-      this.toolDirectories = contents
+      const directories = contents
         .filter((item: any) => item.type === 'dir')
         .map((item: any) => item.name);
-
-      return this.toolDirectories;
+      
+      this.toolDirectories = directories;
+      return directories;
     } catch (error) {
       console.error('Failed to fetch tool directories:', error);
       throw error;
