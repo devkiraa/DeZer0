@@ -431,11 +431,11 @@ export default function Flasher() {
                 </li>
                 <li className="flex items-start">
                   <span className="font-bold text-[#FF8C00] mr-2 min-w-[20px]" style={{ fontFamily: 'Courier New, monospace' }}>3.</span>
-                  <span style={{ fontFamily: 'Courier New, monospace' }}>CLICK "CONNECT DEVICE"</span>
+                  <span style={{ fontFamily: 'Courier New, monospace' }}>CLICK &quot;CONNECT DEVICE&quot;</span>
                 </li>
                 <li className="flex items-start">
                   <span className="font-bold text-[#FF8C00] mr-2 min-w-[20px]" style={{ fontFamily: 'Courier New, monospace' }}>4.</span>
-                  <span style={{ fontFamily: 'Courier New, monospace' }}>CLICK "FLASH FIRMWARE"</span>
+                  <span style={{ fontFamily: 'Courier New, monospace' }}>CLICK &quot;FLASH FIRMWARE&quot;</span>
                 </li>
                 <li className="flex items-start">
                   <span className="font-bold text-[#FF8C00] mr-2 min-w-[20px]" style={{ fontFamily: 'Courier New, monospace' }}>5.</span>
