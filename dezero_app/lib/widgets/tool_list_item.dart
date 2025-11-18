@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/tool_package.dart';
+import '../theme/flipper_theme.dart';
 
-// This widget will represent a single card in our lists
 class ToolListItem extends StatelessWidget {
   final ToolPackage tool;
   final bool isInstalled;
@@ -22,43 +22,112 @@ class ToolListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0),
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
+      decoration: FlipperDecorations.container(),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12.0),
+        borderRadius: BorderRadius.circular(8.0),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(12.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.extension, size: 40, color: theme.primaryColor),
-              const SizedBox(width: 16),
+              // Icon with Flipper style
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: FlipperColors.surfaceLight,
+                  border: Border.all(color: FlipperColors.primary, width: 2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.extension,
+                  size: 28,
+                  color: FlipperColors.primary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Tool info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(tool.name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                    Text("v${tool.version} by ${tool.author}", style: theme.textTheme.bodySmall),
-                    const SizedBox(height: 8),
-                    Text(tool.description, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    Text(
+                      tool.name.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        fontFamily: 'monospace',
+                        color: FlipperColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'v${tool.version} • ${tool.author}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontFamily: 'monospace',
+                        color: FlipperColors.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      tool.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        color: FlipperColors.textTertiary,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              // Conditionally show Install or Run/Uninstall buttons
+              const SizedBox(width: 12),
+              // Action button
               if (isInstalled)
-                IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                  onPressed: onUninstall,
-                  tooltip: "Uninstall",
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: FlipperColors.error, width: 1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    color: FlipperColors.error,
+                    onPressed: onUninstall,
+                    tooltip: 'UNINSTALL',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
+                  ),
                 )
               else
-                FilledButton(
-                  onPressed: onInstall,
-                  child: const Text("Install"),
+                Container(
+                  decoration: BoxDecoration(
+                    color: FlipperColors.primary,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onInstall,
+                      borderRadius: BorderRadius.circular(6),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text(
+                          'INSTALL',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'monospace',
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
             ],
           ),

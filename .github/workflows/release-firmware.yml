@@ -1,0 +1,214 @@
+name: Build and Release Firmware
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install ESP-IDF dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git wget flex bison gperf python3-pip python3-setuptools \
+            cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+
+      - name: Install esptool and mpremote
+        run: |
+          pip install esptool mpremote
+
+      # Adjust these steps based on your actual build process
+      - name: Download MicroPython firmware
+        run: |
+          # Download pre-built MicroPython or build from source
+          wget https://micropython.org/resources/firmware/ESP32_GENERIC-20231005-v1.21.0.bin -O firmware-base.bin
+
+      - name: Prepare filesystem
+        run: |
+          # Create filesystem image from your ESP/ directory
+          python create_fs.py
+
+      - name: Combine firmware (if needed)
+        run: |
+          # If you need to combine bootloader + firmware + partitions
+          # This is an example - adjust for your needs
+          cp firmware-base.bin firmware.bin
+
+      - name: Calculate checksums
+        id: checksums
+        run: |
+          echo "firmware_sha256=$(sha256sum firmware.bin | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "filesystem_sha256=$(sha256sum filesystem.bin | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Get firmware sizes
+        id: sizes
+        run: |
+          echo "firmware_size=$(stat -f%z firmware.bin 2>/dev/null || stat -c%s firmware.bin)" >> $GITHUB_OUTPUT
+          echo "filesystem_size=$(stat -f%z filesystem.bin 2>/dev/null || stat -c%s filesystem.bin)" >> $GITHUB_OUTPUT
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## DeZer0 Firmware ${{ steps.version.outputs.version }}
+
+          ### 📦 Files Included
+          - `firmware.bin` - Main firmware (${{ steps.sizes.outputs.firmware_size }} bytes)
+          - `filesystem.bin` - Filesystem (${{ steps.sizes.outputs.filesystem_size }} bytes)
+
+          ### 🔒 Checksums (SHA256)
+          - firmware.bin: `${{ steps.checksums.outputs.firmware_sha256 }}`
+          - filesystem.bin: `${{ steps.checksums.outputs.filesystem_sha256 }}`
+
+          ### 🚀 Installation
+          Use the [DeZer0 Web Flasher](https://your-flasher-url.com) for easy installation:
+          1. Select this version from the dropdown
+          2. Connect your ESP32 device
+          3. Click "Flash Firmware"
+
+          ### 📝 What's New
+          <!-- Add your release notes here -->
+          - Feature 1
+          - Feature 2
+          - Bug fixes
+
+          ### ⚙️ Flash Settings
+          - Firmware Address: 0x10000
+          - Filesystem Address: 0x110000
+          - Flash Size: 4MB
+          - Flash Mode: DIO
+          - Flash Frequency: 40MHz
+
+          ### 🔧 Manual Installation
+          If you prefer using esptool.py:
+          ```bash
+          esptool.py --chip esp32 --port /dev/ttyUSB0 erase_flash
+          esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash -z 0x10000 firmware.bin
+          esptool.py --chip esp32 --port /dev/ttyUSB0 write_flash -z 0x110000 filesystem.bin
+          ```
+
+          ### 🐛 Known Issues
+          <!-- List any known issues -->
+
+          ### 📱 Compatible Devices
+          - ESP32 (all variants)
+          - ESP32-S2
+          - ESP32-S3
+          - ESP32-C3
+
+          ---
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.version.outputs.version }}
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: DeZer0 Firmware ${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, 'beta') || contains(steps.version.outputs.version, 'alpha') || contains(steps.version.outputs.version, 'rc') }}
+          files: |
+            firmware.bin
+            filesystem.bin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ steps.version.outputs.version }}
+          path: |
+            firmware.bin
+            filesystem.bin
+          retention-days: 90
+
+  test-release:
+    needs: build-firmware
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Wait for release
+        run: sleep 30
+
+      - name: Verify release exists
+        run: |
+          RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${GITHUB_REF#refs/tags/}" \
+            | jq -r '.id')
+          
+          if [ "$RELEASE_ID" = "null" ]; then
+            echo "Release not found!"
+            exit 1
+          fi
+          
+          echo "Release created successfully with ID: $RELEASE_ID"
+
+      - name: Verify assets
+        run: |
+          ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${GITHUB_REF#refs/tags/}" \
+            | jq -r '.assets[].name')
+          
+          echo "Assets found:"
+          echo "$ASSETS"
+          
+          if ! echo "$ASSETS" | grep -q "firmware.bin"; then
+            echo "firmware.bin not found in release assets!"
+            exit 1
+          fi
+          
+          if ! echo "$ASSETS" | grep -q "filesystem.bin"; then
+            echo "filesystem.bin not found in release assets!"
+            exit 1
+          fi
+          
+          echo "All required assets are present!"
+
+  notify:
+    needs: [build-firmware, test-release]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name != 'workflow_dispatch'
+    
+    steps:
+      - name: Send notification
+        run: |
+          if [ "${{ needs.build-firmware.result }}" = "success" ]; then
+            echo "✅ Firmware build and release succeeded!"
+            # Add your notification logic here (Discord, Slack, email, etc.)
+          else
+            echo "❌ Firmware build or release failed!"
+            # Add your failure notification logic here
+          fi

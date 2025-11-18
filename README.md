@@ -1,52 +1,232 @@
 # DeZer0
 
-Welcome to DeZer0, a platform forESP32 devices that allows you to run various scripts and tools directly from a companion app. This repository contains all the necessary files for the DeZer0 companion app, the ESP32 firmware, and the community-contributed tools.
+**Open-source ESP32 Firmware Flashing and Tool Management Platform**
 
-## About The Project
+DeZer0 is a comprehensive platform designed for ESP32 device management, featuring a web-based firmware flasher, a Flutter mobile app for device control, and an extensible tool ecosystem. Flash firmware directly from your browser, manage tools, and control your ESP32 devices wirelessly.
 
-DeZer0 is a comprehensive platform designed for interacting with ESP32 devices. It features a Flutter-based companion app that can connect to the ESP32 via Wi-Fi and execute various tools and scripts. The platform is designed to be easily extensible, allowing users to create and share their own tools.
+## 🚀 Features
 
-### Features
+### Web Flasher
+- **Browser-Based Flashing**: Flash ESP32 firmware directly from your browser using Web Serial API
+- **Release Management**: Automatic firmware updates from GitHub releases
+- **Real-time Progress**: Live flashing progress with detailed console output
+- **Cross-Platform**: Works on Chrome, Edge, and Opera browsers
 
-  * **Companion App**: A cross-platform application built with Flutter that allows you to manage and interact with your DeZer0 device.
-  * **Extensible Tool System**: Easily create and share your own tools for the DeZer0 platform.
-  * **Wi-Fi Connectivity**: The companion app connects to the ESP32 device over Wi-Fi, allowing for remote control and data transfer.
-  * **Real-time Console**: View the output of your scripts in real-time within the companion app.
-  * **Tools Marketplace**: Browse and install new tools from the official DeZer0 Community Tools repository.
+### Mobile App
+- **Multi-Platform**: Flutter app for Android (iOS support coming soon)
+- **Bluetooth & WiFi**: Connect to ESP32 via BLE or WiFi hotspot
+- **Tool Marketplace**: Browse and install community tools directly to your device
+- **Real-time Console**: View script output and device logs in real-time
+- **Activity History**: Track your commands and device interactions
+- **Connection Presets**: Save and manage multiple device connections
+- **Favorites System**: Quick access to frequently used tools
 
-## Getting Started
+### ESP32 Firmware
+- **MicroPython Based**: Easy-to-modify Python-based firmware
+- **Tool Execution**: Run Python scripts uploaded from the mobile app
+- **WiFi Management**: Create hotspot or connect to existing networks
+- **OTA Updates**: Over-the-air firmware updates support
 
-To get started with DeZer0, you will need to flash the firmware onto your ESP32 device and install the companion app on your mobile device or computer.
+## 📁 Project Structure
+
+```
+DeZer0/
+├── web_flasher/          # Next.js web application for ESP32 firmware flashing
+│   ├── src/
+│   │   ├── app/         # Next.js pages (home, flasher, marketplace, download)
+│   │   ├── components/  # React components
+│   │   └── services/    # API services for GitHub integration
+│   └── public/          # Static assets
+│
+├── dezero_app/          # Flutter mobile application
+│   ├── lib/
+│   │   ├── screens/     # App screens (device, tools, apps, etc.)
+│   │   ├── services/    # BLE, WiFi, and marketplace services
+│   │   ├── models/      # Data models
+│   │   └── widgets/     # Reusable UI components
+│   └── android/         # Android-specific configuration
+│
+├── firmware/            # ESP32 MicroPython firmware
+│   ├── boot.py          # Boot configuration
+│   ├── main.py          # Main application logic
+│   └── lib/             # Required libraries (websockets, ssd1306)
+│
+└── .github/             # GitHub Actions workflows
+```
+
+## 🛠️ Getting Started
 
 ### Prerequisites
 
-  * An ESP32 device
-  * A mobile device or computer to run the companion app
-  * The appropriate tools for flashing the ESP32 firmware
+- **For Web Flasher**: Chrome 89+, Edge 89+, or Opera 75+ browser
+- **For Mobile App**: Android 6.0+ device with Bluetooth 4.0 (BLE)
+- **For ESP32**: ESP32 development board with USB connection
 
-### Installation
+### Quick Start
 
-1.  Clone the repository:
-    ```sh
-    git clone https://github.com/devkiraa/DeZer0.git
-    ```
-2.  Flash the firmware located in the `DeZer0/ESP` directory onto your ESP32 device.
-3.  Build and install the companion app from the `DeZer0/dezero_app` directory on your desired platform (iOS, Android, etc.).
+#### 1. Flash Firmware
 
-## How to Use
+Visit the [Web Flasher](https://your-deployment-url.com/flasher) and follow these steps:
 
-1.  Power on your ESP32 device.
-2.  Connect to the Wi-Fi network that the ESP32 is hosting.
-3.  Launch the DeZer0 companion app.
-4.  Navigate to the "Device" screen and connect to your ESP32.
-5.  Once connected, you can browse and install tools from the "Tools" screen or run already installed tools from the "Apps" screen.
+1. Connect your ESP32 to your computer via USB
+2. Put ESP32 in bootloader mode (hold BOOT, press RESET, release BOOT)
+3. Click "Connect Device" and select your ESP32 port
+4. Select firmware version
+5. Click "Flash Firmware" and wait for completion
 
-## File Structure
+#### 2. Install Mobile App
 
-The repository is organized into the following directories:
+1. Download the latest APK from the [Download Page](https://your-deployment-url.com/download)
+2. Enable "Install from Unknown Sources" in Android settings
+3. Install the APK
+4. Grant Bluetooth and Location permissions
 
-  * `DeZer0/dezero_app`: Contains the source code for the Flutter companion app.
-  * `DeZer0/ESP`: Contains the MicroPython firmware for the ESP32 device.
-  * `DeZer0 Tools`: Contains the community-contributed tools, each in its own subdirectory.
+#### 3. Connect and Use
 
-Each tool in the `DeZer0 Tools` directory has a `manifest.json` file that describes the tool and a Python script that is executed on the ESP32.
+1. Power on your ESP32 device
+2. Open DeZer0 mobile app
+3. Navigate to "Device" screen
+4. Connect via Bluetooth or WiFi
+5. Browse and install tools from the "Tools" marketplace
+6. Run installed tools from the "Apps" screen
+
+## 🔧 Development Setup
+
+### Web Flasher
+
+```bash
+cd web_flasher
+npm install
+npm run dev
+# Open http://localhost:3000
+```
+
+### Mobile App
+
+```bash
+cd dezero_app
+flutter pub get
+flutter run
+```
+
+### ESP32 Firmware
+
+Upload the firmware files to your ESP32 using a tool like `ampy` or `rshell`:
+
+```bash
+cd firmware
+ampy --port /dev/ttyUSB0 put boot.py
+ampy --port /dev/ttyUSB0 put main.py
+ampy --port /dev/ttyUSB0 put ssd1306.py
+```
+
+## 📱 Mobile App Features
+
+### Device Management
+- **BLE Scanner**: Discover nearby ESP32 devices
+- **WiFi Hotspot**: Connect via ESP32's WiFi network
+- **Connection Presets**: Save device configurations
+- **Auto-reconnect**: Automatic reconnection on connection loss
+
+### Tool Management
+- **Marketplace Integration**: Browse GitHub-hosted tools
+- **Category Filtering**: Tools organized by functionality
+- **Search & Tags**: Find tools quickly
+- **Download & Install**: One-tap tool installation
+- **Favorites**: Mark frequently used tools
+
+### Activity & Logs
+- **Command History**: Track all executed commands
+- **Execution Logs**: View detailed output
+- **Timestamps**: See when actions occurred
+- **Export Options**: Save logs for debugging
+
+## 🌐 Web Flasher Features
+
+### Firmware Flashing
+- **GitHub Integration**: Auto-fetch latest releases
+- **Version Selection**: Choose specific firmware versions
+- **Dual File Flash**: Firmware + filesystem in one operation
+- **Error Recovery**: Robust error handling and retry logic
+
+### Tool Marketplace
+- **Browse Tools**: Explore available ESP32 tools
+- **Category Filters**: Network, RF, Utilities, etc.
+- **Tool Details**: View descriptions, authors, and requirements
+- **Installation Guide**: Step-by-step setup instructions
+
+## 🤝 Contributing
+
+We welcome contributions! Here's how you can help:
+
+1. **Create Tools**: Build Python scripts for ESP32 with a `manifest.json`
+2. **Report Bugs**: Open issues on GitHub
+3. **Submit PRs**: Fix bugs or add features
+4. **Documentation**: Improve guides and examples
+
+### Creating a Tool
+
+Create a new directory in `DeZer0-Tools` repository with:
+
+```json
+// manifest.json
+{
+  "id": "my-tool",
+  "name": "My Awesome Tool",
+  "version": "1.0.0",
+  "author": "Your Name",
+  "description": "What your tool does",
+  "category": "Utilities",
+  "scriptFilename": "my_tool.py",
+  "tags": ["tag1", "tag2"]
+}
+```
+
+```python
+# my_tool.py
+print("Hello from my tool!")
+# Your ESP32 Python code here
+```
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🔗 Links
+
+- **GitHub Repository**: [devkiraa/DeZer0](https://github.com/devkiraa/DeZer0)
+- **Tools Repository**: [devkiraa/DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)
+- **Web Flasher**: [Live Demo](#)
+- **Report Issues**: [GitHub Issues](https://github.com/devkiraa/DeZer0/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/devkiraa/DeZer0/discussions)
+
+## 🙏 Acknowledgments
+
+- ESP32 community for hardware support
+- Flutter team for the amazing framework
+- Next.js team for the web framework
+- MicroPython community for ESP32 firmware
+- All contributors and tool creators
+
+## 📊 System Requirements
+
+### Web Flasher
+- Chrome 89+, Edge 89+, or Opera 75+
+- USB connection to ESP32
+- 50MB free disk space
+
+### Mobile App
+- **Minimum**: Android 6.0, Bluetooth 4.0, 50MB storage
+- **Recommended**: Android 8.0+, Bluetooth 5.0, 100MB storage
+- Location permission (required for BLE scanning)
+- WiFi for marketplace access
+
+### ESP32 Firmware
+- ESP32 development board
+- 4MB flash memory
+- WiFi capability
+- Optional: OLED display (SSD1306)
+
+---
+
+**Made with ❤️ by the DeZer0 Community**

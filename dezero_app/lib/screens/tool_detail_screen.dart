@@ -5,6 +5,7 @@ import '../models/tool_package.dart';
 import '../services/app_management_service.dart';
 import '../services/marketplace_service.dart';
 import '../services/wifi_service.dart';
+import '../screens/activity_history_screen.dart';
 import 'run_tool_screen.dart';
 
 enum ActionState { idle, downloading }
@@ -85,6 +86,22 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
     if(mounted) {
       if (fileBytes != null) {
         widget.appManagementService.installTool(widget.tool, fileBytes);
+        
+        // Log installation
+        ActivityHistoryService.addLog(
+          type: 'tool_execution',
+          title: _isInstalled ? 'App updated' : 'App installed',
+          description: '${widget.tool.name} ${_isInstalled ? "updated to" : "installed at"} version ${widget.tool.version}',
+          isSuccess: true,
+        );
+      } else {
+        // Log installation failure
+        ActivityHistoryService.addLog(
+          type: 'error',
+          title: 'Installation failed',
+          description: '${widget.tool.name}: Download failed',
+          isSuccess: false,
+        );
       }
       setState(() { _actionState = ActionState.idle; });
     }
@@ -92,6 +109,14 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
 
   void _uninstall() {
     widget.appManagementService.uninstallTool(widget.tool.id);
+    
+    // Log uninstallation
+    ActivityHistoryService.addLog(
+      type: 'tool_execution',
+      title: 'App uninstalled',
+      description: '${widget.tool.name} removed from installed apps',
+      isSuccess: true,
+    );
   }
 
   void _openTool() {

@@ -1,18 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'passcode_screen.dart';
+import 'loading_screen.dart';
 import 'services/app_management_service.dart';
 import 'services/wifi_service.dart';
+import 'services/hotspot_service.dart';
+import 'theme/flipper_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Set system UI overlay style for Flipper Zero theme
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: FlipperColors.surface,
+      systemNavigationBarIconBrightness: Brightness.light,
+    ),
+  );
+  
   await AppManagementService.instance.init();
   
   runApp(
     MultiProvider(
       providers: [
-        // This makes one single instance of WifiService available to the whole app
         ChangeNotifierProvider(create: (_) => WifiService()),
+        ChangeNotifierProvider(create: (_) => HotspotService()),
         Provider(create: (_) => AppManagementService.instance),
       ],
       child: const MyApp(),
@@ -25,34 +39,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color.fromARGB(255, 0, 0, 0);
-    const backgroundColor = Color.fromARGB(255, 255, 255, 255);
-
     return MaterialApp(
-      title: 'DeZer0 App',
-      theme: ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: backgroundColor,
-        primaryColor: primaryColor,
-        colorScheme: ColorScheme.fromSeed(seedColor: primaryColor, brightness: Brightness.light),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: backgroundColor,
-          elevation: 0,
-          titleTextStyle: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-          iconTheme: IconThemeData(color: Colors.black),
-        ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.white,
-          selectedItemColor: primaryColor,
-        ),
-        cardTheme: CardThemeData(
-          color: Colors.white,
-          elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
-        ),
-      ),
-      home: const PasscodeScreen(),
+      title: 'DeZer0',
+      theme: FlipperTheme.darkTheme,
+      debugShowCheckedModeBanner: false,
+      home: const LoadingScreen(),
     );
   }
 }

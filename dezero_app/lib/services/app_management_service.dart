@@ -81,4 +81,25 @@ class AppManagementService {
       await _save();
     }
   }
+
+  Future<void> clearAllTools() async {
+    if (!_isInitialized) await init();
+    
+    // Delete all script files
+    final installedToolIds = List<String>.from(installedTools.value.keys);
+    for (final toolId in installedToolIds) {
+      try {
+        final file = File('$_appDocsPath/$toolId.py');
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        print("Error deleting script file: $e");
+      }
+    }
+    
+    // Clear the installed tools map
+    installedTools.value = {};
+    await _save();
+  }
 }

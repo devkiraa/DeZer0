@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum WifiConnectionState { disconnected, connecting, connected, error }
 
@@ -24,6 +25,11 @@ class WifiService with ChangeNotifier {
       _socket = await Socket.connect(ipAddress, 8888, timeout: const Duration(seconds: 5));
       _connectionState = WifiConnectionState.connected;
       print('TCP Connected!');
+      
+      // Save last connected IP
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('last_connected_ip', ipAddress);
+      
       notifyListeners();
 
       _socket!.cast<List<int>>()
