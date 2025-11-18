@@ -1,36 +1,24 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# DeZer0 Web Flasher
 
-## Getting Started
+## What is this?
 
-First, run the development server:
+The DeZer0 Web Flasher is a simple, browser-based tool for flashing the DeZer0 firmware onto an ESP32 device. It allows users to prepare their ESP32 for use with the DeZer0 companion app without needing to install any command-line tools or drivers.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Why does this exist?
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Getting started with a new hardware project can often be intimidating, especially for users who are not familiar with the command line or complex development environments. The primary goal of the Web Flasher is to **lower the barrier to entry** for new DeZer0 users.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+By providing a tool that runs entirely in a web browser, we simplify the initial setup process to just a few clicks. This makes it significantly easier and faster for anyone to get their ESP32 device running the DeZer0 firmware.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+## How to Use It
 
-## Learn More
+1.  **Connect your ESP32**: Plug your ESP32 device into your computer using a USB cable.
+2.  **Enter Bootloader Mode**: Hold down the `BOOT` or `FLASH` button on your ESP32, and while holding it, press and release the `RESET` or `EN` button. You can then release the `BOOT` button. This puts the device in a state where it's ready to receive new firmware.
+3.  **Open the Web Flasher**: Navigate to the web flasher URL in a compatible browser (like Google Chrome or Microsoft Edge).
+4.  **Connect to the Device**: Click the "Connect" button and select the serial port corresponding to your ESP32 from the list that appears.
+5.  **Flash the Firmware**: Once connected, click the "Flash" button. The tool will automatically flash both the MicroPython firmware and the DeZer0 application files.
+6.  **Wait for Completion**: The log window will show the flashing progress. Once it's complete, you can disconnect the device and restart it. It is now ready to be used with the DeZer0 app!
 
-To learn more about Next.js, take a look at the following resources:
+## Technical Details
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+This application is built with [Next.js](https://nextjs.org/) and uses the [`esp-web-tools`](https://github.com/esphome/esp-web-tools) library, which leverages the [Web Serial API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API) to communicate with the ESP32 directly from the browser.
