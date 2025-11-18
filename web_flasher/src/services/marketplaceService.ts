@@ -1,11 +1,39 @@
 import { ToolPackage } from '@/types/marketplace';
 
+interface BlobCacheData {
+  tools: ToolPackage[];
+  lastUpdated: string;
+  totalCount: number;
+}
+
 export class MarketplaceService {
   private repoOwner = 'devkiraa';
   private repoName = 'DeZer0-Tools';
   private repoContentsUrl = `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/contents/`;
   private rawFileUrlBase = `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/main/`;
   private toolDirectories: string[] | null = null;
+  private cachedTools: ToolPackage[] | null = null;
+
+  async fetchFromBlobCache(): Promise<BlobCacheData | null> {
+    try {
+      // Fetch the blob cache URL from our API endpoint
+      const response = await fetch('/api/tools/cache', {
+        next: { revalidate: 3600 } // Cache for 1 hour
+      });
+      
+      if (!response.ok) {
+        console.warn('Blob cache not available, falling back to GitHub');
+        return null;
+      }
+
+      const data: BlobCacheData = await response.json();
+      console.log(`Loaded ${data.totalCount} tools from blob cache (updated: ${data.lastUpdated})`);
+      return data;
+    } catch (error) {
+      console.warn('Failed to fetch from blob cache:', error);
+      return null;
+    }
+  }
 
   async getToolDirectories(): Promise<string[]> {
     if (this.toolDirectories !== null) {
@@ -34,6 +62,21 @@ export class MarketplaceService {
 
   async fetchTools(limit?: number, offset: number = 0): Promise<ToolPackage[]> {
     try {
+      // Try to fetch from blob cache first
+      const blobData = await this.fetchFromBlobCache();
+      
+      if (blobData && blobData.tools.length > 0) {
+        this.cachedTools = blobData.tools;
+        
+        // Return paginated results from cache
+        if (limit) {
+          return blobData.tools.slice(offset, offset + limit);
+        }
+        return blobData.tools;
+      }
+
+      // Fallback to GitHub API if blob cache is unavailable
+      console.log('Fetching from GitHub API...');
       const directories = await this.getToolDirectories();
       const toolsToFetch = limit 
         ? directories.slice(offset, offset + limit)
@@ -66,6 +109,18 @@ export class MarketplaceService {
   }
 
   async getTotalToolCount(): Promise<number> {
+    // If we have cached tools, return that count
+    if (this.cachedTools) {
+      return this.cachedTools.length;
+    }
+
+    // Try blob cache first
+    const blobData = await this.fetchFromBlobCache();
+    if (blobData) {
+      return blobData.totalCount;
+    }
+
+    // Fallback to GitHub
     const directories = await this.getToolDirectories();
     return directories.length;
   }
