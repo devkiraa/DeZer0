@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob';
+import { put, del, list } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 interface ToolPackage {
@@ -39,8 +39,10 @@ async function fetchAllToolsFromGitHub(): Promise<ToolPackage[]> {
 
     const contents = await response.json();
     const directories = contents
-      .filter((item: any) => item.type === 'directory')
+      .filter((item: any) => item.type === 'dir')
       .map((item: any) => item.name);
+    
+    console.log(`Found ${directories.length} tool directories:`, directories);
 
     // Fetch all manifests in parallel
     const manifestPromises = directories.map(async (dir: string) => {
@@ -83,6 +85,18 @@ export async function GET() {
     
     // Fetch all tools from GitHub
     const tools = await fetchAllToolsFromGitHub();
+    
+    // Delete existing cache if it exists
+    try {
+      const { blobs } = await list({ limit: 10 });
+      const existingBlob = blobs.find(b => b.pathname === 'tools-cache.json');
+      if (existingBlob) {
+        await del(existingBlob.url);
+        console.log('Deleted existing cache');
+      }
+    } catch (error) {
+      console.log('No existing cache to delete');
+    }
     
     // Store in Vercel Blob
     const blob = await put('tools-cache.json', JSON.stringify({

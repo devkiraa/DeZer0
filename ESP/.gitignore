@@ -1,0 +1,6 @@
+# MicroPython/ESP32
+*.pyc
+__pycache__/
+
+# Logs
+*.log
