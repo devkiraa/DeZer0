@@ -4,28 +4,56 @@ import { useState, useEffect } from 'react';
 import { ToolPackage } from '@/types/marketplace';
 import { marketplaceService } from '@/services/marketplaceService';
 
+const INITIAL_LOAD = 9;
+const LOAD_MORE_COUNT = 6;
+
 export default function MarketplacePage() {
   const [tools, setTools] = useState<ToolPackage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTool, setSelectedTool] = useState<ToolPackage | null>(null);
+  const [totalCount, setTotalCount] = useState(0);
+  const [hasMoreToLoad, setHasMoreToLoad] = useState(true);
 
   useEffect(() => {
-    loadTools();
+    loadInitialTools();
   }, []);
 
-  const loadTools = async () => {
+  const loadInitialTools = async () => {
     try {
       setLoading(true);
-      const fetchedTools = await marketplaceService.fetchTools();
+      const [fetchedTools, total] = await Promise.all([
+        marketplaceService.fetchTools(INITIAL_LOAD, 0),
+        marketplaceService.getTotalToolCount()
+      ]);
       setTools(fetchedTools);
+      setTotalCount(total);
+      setHasMoreToLoad(fetchedTools.length < total);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tools');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadMoreTools = async () => {
+    if (loadingMore || !hasMoreToLoad) return;
+
+    try {
+      setLoadingMore(true);
+      const currentOffset = tools.length;
+      const newTools = await marketplaceService.fetchTools(LOAD_MORE_COUNT, currentOffset);
+      const updatedTools = [...tools, ...newTools];
+      setTools(updatedTools);
+      setHasMoreToLoad(updatedTools.length < totalCount);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load more tools');
+    } finally {
+      setLoadingMore(false);
     }
   };
 
@@ -38,6 +66,36 @@ export default function MarketplacePage() {
                          tool.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     return matchesCategory && matchesSearch;
   });
+
+  const showLoadMore = !loading && !error && hasMoreToLoad && filteredTools.length === tools.length;
+
+  const SkeletonCard = () => (
+    <div className="bg-[#0d0d0d] border border-[#FF8C00]/30 p-6 animate-pulse">
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-[#1a1a1a] rounded"></div>
+          <div>
+            <div className="h-5 w-32 bg-[#1a1a1a] rounded mb-2"></div>
+            <div className="h-4 w-16 bg-[#1a1a1a] rounded"></div>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-2 mb-4">
+        <div className="h-4 bg-[#1a1a1a] rounded w-full"></div>
+        <div className="h-4 bg-[#1a1a1a] rounded w-5/6"></div>
+        <div className="h-4 bg-[#1a1a1a] rounded w-4/6"></div>
+      </div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="h-4 w-24 bg-[#1a1a1a] rounded"></div>
+        <div className="h-6 w-20 bg-[#1a1a1a] rounded"></div>
+      </div>
+      <div className="flex gap-2">
+        <div className="h-6 w-16 bg-[#1a1a1a] rounded"></div>
+        <div className="h-6 w-20 bg-[#1a1a1a] rounded"></div>
+        <div className="h-6 w-18 bg-[#1a1a1a] rounded"></div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-black">
@@ -97,9 +155,10 @@ export default function MarketplacePage() {
 
         {/* Loading State */}
         {loading && (
-          <div className="text-center py-20">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FF8C00]"></div>
-            <p className="text-[#B0B0B0] mt-4" style={{ fontFamily: 'Courier New, monospace' }}>LOADING TOOLS...</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(9)].map((_, idx) => (
+              <SkeletonCard key={idx} />
+            ))}
           </div>
         )}
 
@@ -108,7 +167,7 @@ export default function MarketplacePage() {
           <div className="bg-[#0d0d0d] border border-[#FF8C00] p-6 text-center">
             <p className="text-[#FF8C00] mb-4" style={{ fontFamily: 'Courier New, monospace' }}>{error.toUpperCase()}</p>
             <button
-              onClick={loadTools}
+              onClick={loadInitialTools}
               className="px-6 py-2 bg-[#FF8C00] hover:bg-black text-black hover:text-[#FF8C00] border border-[#FF8C00] transition"
               style={{ fontFamily: 'Courier New, monospace' }}
             >
@@ -121,7 +180,7 @@ export default function MarketplacePage() {
         {!loading && !error && (
           <>
             <div className="mb-4 text-[#B0B0B0]" style={{ fontFamily: 'Courier New, monospace' }}>
-              SHOWING {filteredTools.length} OF {tools.length} TOOLS
+              SHOWING {tools.length} OF {totalCount} TOOLS {filteredTools.length < tools.length ? `(${filteredTools.length} FILTERED)` : ''}
             </div>
             
             {filteredTools.length === 0 ? (
@@ -130,8 +189,9 @@ export default function MarketplacePage() {
                 <p className="text-[#B0B0B0] text-lg" style={{ fontFamily: 'Courier New, monospace' }}>NO TOOLS FOUND MATCHING YOUR CRITERIA</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredTools.map((tool) => (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredTools.map((tool) => (
                   <div
                     key={tool.id}
                     onClick={() => setSelectedTool(tool)}
@@ -180,6 +240,21 @@ export default function MarketplacePage() {
                   </div>
                 ))}
               </div>
+
+              {/* Load More Button */}
+              {showLoadMore && (
+                <div className="mt-8 text-center">
+                  <button
+                    onClick={loadMoreTools}
+                    disabled={loadingMore}
+                    className="px-8 py-3 bg-[#FF8C00] hover:bg-black text-black hover:text-[#FF8C00] border border-[#FF8C00] transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{ fontFamily: 'Courier New, monospace' }}
+                  >
+                    {loadingMore ? 'LOADING...' : 'LOAD MORE TOOLS'}
+                  </button>
+                </div>
+              )}
+            </>
             )}
           </>
         )}

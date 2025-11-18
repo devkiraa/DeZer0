@@ -5,8 +5,13 @@ export class MarketplaceService {
   private repoName = 'DeZer0-Tools';
   private repoContentsUrl = `https://api.github.com/repos/${this.repoOwner}/${this.repoName}/contents/`;
   private rawFileUrlBase = `https://raw.githubusercontent.com/${this.repoOwner}/${this.repoName}/main/`;
+  private toolDirectories: string[] | null = null;
 
-  async fetchTools(): Promise<ToolPackage[]> {
+  async getToolDirectories(): Promise<string[]> {
+    if (this.toolDirectories !== null) {
+      return this.toolDirectories;
+    }
+
     try {
       const response = await fetch(this.repoContentsUrl);
       
@@ -15,24 +20,40 @@ export class MarketplaceService {
       }
 
       const contents = await response.json();
+      this.toolDirectories = contents
+        .filter((item: any) => item.type === 'dir')
+        .map((item: any) => item.name);
+
+      return this.toolDirectories;
+    } catch (error) {
+      console.error('Failed to fetch tool directories:', error);
+      throw error;
+    }
+  }
+
+  async fetchTools(limit?: number, offset: number = 0): Promise<ToolPackage[]> {
+    try {
+      const directories = await this.getToolDirectories();
+      const toolsToFetch = limit 
+        ? directories.slice(offset, offset + limit)
+        : directories;
+      
       const tools: ToolPackage[] = [];
 
-      for (const item of contents) {
-        if (item.type === 'dir') {
-          try {
-            const manifestUrl = `${this.rawFileUrlBase}${item.name}/manifest.json`;
-            const manifestResponse = await fetch(manifestUrl);
-            
-            if (manifestResponse.ok) {
-              const manifestData = await manifestResponse.json();
-              tools.push({
-                ...manifestData,
-                id: item.name,
-              });
-            }
-          } catch (e) {
-            console.warn(`Failed to load manifest for ${item.name}:`, e);
+      for (const dirName of toolsToFetch) {
+        try {
+          const manifestUrl = `${this.rawFileUrlBase}${dirName}/manifest.json`;
+          const manifestResponse = await fetch(manifestUrl);
+          
+          if (manifestResponse.ok) {
+            const manifestData = await manifestResponse.json();
+            tools.push({
+              ...manifestData,
+              id: dirName,
+            });
           }
+        } catch (e) {
+          console.warn(`Failed to load manifest for ${dirName}:`, e);
         }
       }
 
@@ -41,6 +62,11 @@ export class MarketplaceService {
       console.error('Failed to fetch tools:', error);
       throw error;
     }
+  }
+
+  async getTotalToolCount(): Promise<number> {
+    const directories = await this.getToolDirectories();
+    return directories.length;
   }
 
   async downloadTool(
