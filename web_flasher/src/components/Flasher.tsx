@@ -51,7 +51,7 @@ interface SerialPort {
   writable: WritableStream<Uint8Array> | null;
 }
 
-interface Navigator {
+interface NavigatorSerial {
   serial: {
     requestPort(): Promise<SerialPort>;
   };
@@ -182,7 +182,7 @@ export default function Flasher() {
 
     try {
       addLog("Requesting serial port access...");
-      const port = await (navigator as Navigator).serial.requestPort();
+      const port = await (navigator as unknown as NavigatorSerial).serial.requestPort();
       portRef.current = port;
       
       const transport = new Transport(port);
