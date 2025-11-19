@@ -58,24 +58,33 @@ export class GitHubService {
     const config = await this.loadConfig();
     const patterns = config.github.firmwareAssetPatterns;
 
+    const bootloaderAsset = release.assets.find(asset => 
+      new RegExp(patterns.bootloader, 'i').test(asset.name)
+    );
+
+    const partitionAsset = release.assets.find(asset => 
+      new RegExp(patterns.partition, 'i').test(asset.name)
+    );
+
     const firmwareAsset = release.assets.find(asset => 
       new RegExp(patterns.firmware, 'i').test(asset.name)
     );
 
-    const filesystemAsset = release.assets.find(asset => 
-      new RegExp(patterns.filesystem, 'i').test(asset.name)
-    );
-
     return {
+      bootloader: bootloaderAsset ? {
+        url: bootloaderAsset.browser_download_url,
+        name: bootloaderAsset.name,
+        size: bootloaderAsset.size,
+      } : null,
+      partition: partitionAsset ? {
+        url: partitionAsset.browser_download_url,
+        name: partitionAsset.name,
+        size: partitionAsset.size,
+      } : null,
       firmware: firmwareAsset ? {
         url: firmwareAsset.browser_download_url,
         name: firmwareAsset.name,
         size: firmwareAsset.size,
-      } : null,
-      filesystem: filesystemAsset ? {
-        url: filesystemAsset.browser_download_url,
-        name: filesystemAsset.name,
-        size: filesystemAsset.size,
       } : null,
     };
   }

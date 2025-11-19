@@ -1,7 +1,0 @@
-# Opcode constants
-OP_CONT = 0x0
-OP_TEXT = 0x1
-OP_BINARY = 0x2
-OP_CLOSE = 0x8
-OP_PING = 0x9
-OP_PONG = 0xa

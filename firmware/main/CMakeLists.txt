@@ -1,0 +1,41 @@
+idf_component_register(
+    SRCS 
+        "main.cpp"
+        "core/boot_manager.cpp"
+        "core/plugin_manager.cpp"
+        "core/payload_loader.cpp"
+        "core/storage_manager.cpp"
+        "hal/wifi_api.cpp"
+        "hal/ble_api.cpp"
+        "hal/gpio_api.cpp"
+        "hal/display_api.cpp"
+        "communication/ble_server.cpp"
+        "communication/wifi_manager.cpp"
+        "communication/websocket_server.cpp"
+        "runtimes/native_loader.cpp"
+        "runtimes/micropython_vm.cpp"
+        "runtimes/lua_vm.cpp"
+        "builtins/wifi_scanner.cpp"
+        "builtins/ble_scanner.cpp"
+    
+    INCLUDE_DIRS 
+        "."
+        "include"
+        "core"
+        "hal"
+        "communication"
+        "runtimes"
+        "builtins"
+    
+    REQUIRES
+        nvs_flash
+        esp_wifi
+        esp_http_server
+        bt
+        spi_flash
+        spiffs
+        driver
+        app_update
+        json
+        esp_timer
+)

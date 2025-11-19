@@ -43,3 +43,10 @@ env/
 # APK builds
 *.apk
 DeZer0-*.apk
+
+# Build Artifacts
+firmware/build/
+firmware_bins/
+managed_components/
+dependencies.lock
+*.pyc

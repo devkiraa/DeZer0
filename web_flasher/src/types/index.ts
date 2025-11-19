@@ -15,12 +15,17 @@ export interface GitHubAsset {
 }
 
 export interface FirmwareFiles {
-  firmware: {
+  bootloader: {
     url: string;
     name: string;
     size: number;
   } | null;
-  filesystem: {
+  partition: {
+    url: string;
+    name: string;
+    size: number;
+  } | null;
+  firmware: {
     url: string;
     name: string;
     size: number;
@@ -32,17 +37,21 @@ export interface Config {
     owner: string;
     repo: string;
     firmwareAssetPatterns: {
+      bootloader: string;
+      partition: string;
       firmware: string;
-      filesystem: string;
     };
   };
   flash: {
     baudrate: number;
     flashOptions: {
-      firmware: {
+      bootloader: {
         address: string;
       };
-      filesystem: {
+      partition: {
+        address: string;
+      };
+      firmware: {
         address: string;
       };
       flashSize: string;

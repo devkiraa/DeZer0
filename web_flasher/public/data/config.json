@@ -3,18 +3,22 @@
     "owner": "devkiraa",
     "repo": "DeZer0-Tools",
     "firmwareAssetPatterns": {
-      "firmware": "firmware.*\\.bin$",
-      "filesystem": "filesystem.*\\.bin$"
+      "bootloader": "bootloader.*\\.bin$",
+      "partition": "partition.*\\.bin$",
+      "firmware": "(firmware|dezero_firmware).*\\.bin$"
     }
   },
   "flash": {
     "baudrate": 115200,
     "flashOptions": {
+      "bootloader": {
+        "address": "0x1000"
+      },
+      "partition": {
+        "address": "0x8000"
+      },
       "firmware": {
         "address": "0x10000"
-      },
-      "filesystem": {
-        "address": "0x110000"
       },
       "flashSize": "4MB",
       "flashFreq": "40m",

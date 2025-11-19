@@ -149,16 +149,22 @@ export default function Flasher() {
       const files = await githubService.getFirmwareFiles(release);
       setFirmwareFiles(files);
       
+      if (files.bootloader) {
+        addLog(`✓ Bootloader found: ${files.bootloader.name} (${githubService.formatFileSize(files.bootloader.size)})`);
+      } else {
+        addLog("⚠ Warning: Bootloader file not found in this release");
+      }
+      
+      if (files.partition) {
+        addLog(`✓ Partition table found: ${files.partition.name} (${githubService.formatFileSize(files.partition.size)})`);
+      } else {
+        addLog("⚠ Warning: Partition table file not found in this release");
+      }
+      
       if (files.firmware) {
         addLog(`✓ Firmware found: ${files.firmware.name} (${githubService.formatFileSize(files.firmware.size)})`);
       } else {
         addLog("⚠ Warning: Firmware file not found in this release");
-      }
-      
-      if (files.filesystem) {
-        addLog(`✓ Filesystem found: ${files.filesystem.name} (${githubService.formatFileSize(files.filesystem.size)})`);
-      } else {
-        addLog("⚠ Warning: Filesystem file not found in this release");
       }
     } catch (error) {
       addLog(`Error loading firmware files: ${error}`);
@@ -228,17 +234,35 @@ export default function Flasher() {
       return;
     }
 
-    if (!firmwareFiles?.firmware || !firmwareFiles?.filesystem) {
-      addLog("⚠ Error: Firmware files not loaded. Please select a release.");
+    if (!firmwareFiles?.bootloader || !firmwareFiles?.partition || !firmwareFiles?.firmware) {
+      addLog("⚠ Error: Required firmware files not loaded. Please select a release with all files.");
       return;
     }
 
     setIsFlashing(true);
     setFlashProgress(0);
     addLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-    addLog("Starting flash process...");
+    addLog("Starting ESP-IDF firmware flash process...");
 
     try {
+      // Download bootloader
+      addLog(`Downloading bootloader: ${firmwareFiles.bootloader.name}...`);
+      setDownloadProgress(0);
+      const bootloaderData = await githubService.downloadFirmwareFile(
+        firmwareFiles.bootloader.url,
+        (progress) => setDownloadProgress(progress)
+      );
+      addLog(`✓ Bootloader downloaded (${githubService.formatFileSize(bootloaderData.byteLength)})`);
+
+      // Download partition table
+      addLog(`Downloading partition table: ${firmwareFiles.partition.name}...`);
+      setDownloadProgress(0);
+      const partitionData = await githubService.downloadFirmwareFile(
+        firmwareFiles.partition.url,
+        (progress) => setDownloadProgress(progress)
+      );
+      addLog(`✓ Partition table downloaded (${githubService.formatFileSize(partitionData.byteLength)})`);
+
       // Download firmware
       addLog(`Downloading firmware: ${firmwareFiles.firmware.name}...`);
       setDownloadProgress(0);
@@ -248,15 +272,6 @@ export default function Flasher() {
       );
       addLog(`✓ Firmware downloaded (${githubService.formatFileSize(firmwareData.byteLength)})`);
 
-      // Download filesystem
-      addLog(`Downloading filesystem: ${firmwareFiles.filesystem.name}...`);
-      setDownloadProgress(0);
-      const filesystemData = await githubService.downloadFirmwareFile(
-        firmwareFiles.filesystem.url,
-        (progress) => setDownloadProgress(progress)
-      );
-      addLog(`✓ Filesystem downloaded (${githubService.formatFileSize(filesystemData.byteLength)})`);
-
       // Prepare flash options
       const config = await githubService.loadConfig();
       const flashConfig = config.flash.flashOptions;
@@ -265,12 +280,16 @@ export default function Flasher() {
       const flashOptions: FlashOptions = {
         fileArray: [
           { 
-            data: firmwareData, 
-            address: parseInt(flashConfig.firmware.address, 16) 
+            data: bootloaderData, 
+            address: parseInt(flashConfig.bootloader.address, 16) 
           },
           { 
-            data: filesystemData, 
-            address: parseInt(flashConfig.filesystem.address, 16) 
+            data: partitionData, 
+            address: parseInt(flashConfig.partition.address, 16) 
+          },
+          { 
+            data: firmwareData, 
+            address: parseInt(flashConfig.firmware.address, 16) 
           },
         ],
         flashSize: flashConfig.flashSize,
@@ -281,13 +300,14 @@ export default function Flasher() {
         reportProgress: (fileIndex: number, written: number, total: number) => {
           const progress = Math.round((written / total) * 100);
           setFlashProgress(progress);
+          const fileNames = ['Bootloader', 'Partition table', 'Firmware'];
           if (written === total) {
-            addLog(`✓ File ${fileIndex + 1} written successfully`);
+            addLog(`✓ ${fileNames[fileIndex]} written successfully`);
           }
         },
       };
 
-      addLog("Writing firmware to flash...");
+      addLog("Writing bootloader, partition table, and firmware to flash...");
       await esploader.current.writeFlash(flashOptions);
       
       addLog("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -303,7 +323,7 @@ export default function Flasher() {
     }
   };
 
-  const canFlash = isConnected && !isFlashing && firmwareFiles?.firmware && firmwareFiles?.filesystem;
+  const canFlash = isConnected && !isFlashing && firmwareFiles?.bootloader && firmwareFiles?.partition && firmwareFiles?.firmware;
 
   return (
     <div className="min-h-screen bg-black py-8 px-4">

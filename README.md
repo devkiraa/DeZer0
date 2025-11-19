@@ -1,13 +1,13 @@
 # DeZer0
 
-**Open-source ESP32 Firmware Flashing and Tool Management Platform**
+**Open-source ESP32 Security Research & Tool Management Platform**
 
-DeZer0 is a comprehensive platform designed for ESP32 device management, featuring a web-based firmware flasher, a Flutter mobile app for device control, and an extensible tool ecosystem. Flash firmware directly from your browser, manage tools, and control your ESP32 devices wirelessly.
+DeZer0 is a powerful ESP32-based platform for wireless security research, featuring a modular firmware system with plugin support, a web-based firmware flasher, and a Flutter mobile app for device control. Execute custom payloads with support for Native C++, MicroPython, and Lua runtimes.
 
 ## 📦 Repositories
 
-- **[DeZer0](https://github.com/devkiraa/DeZer0)** - Main repository (web flasher, mobile app, ESP32 firmware)
-- **[DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)** - Community tools and app releases
+- **[DeZer0](https://github.com/devkiraa/DeZer0)** - Main repository (source code, web flasher, mobile app, firmware)
+- **[DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)** - Community tools marketplace and app releases
 
 ## 🚀 Features
 
@@ -16,21 +16,25 @@ DeZer0 is a comprehensive platform designed for ESP32 device management, featuri
 - **Release Management**: Automatic firmware updates from GitHub releases
 - **Real-time Progress**: Live flashing progress with detailed console output
 - **Cross-Platform**: Works on Chrome, Edge, and Opera browsers
+- **Tools Marketplace**: Browse and download community tools with Vercel Blob caching
 
 ### Mobile App
 - **Multi-Platform**: Flutter app for Android (iOS support coming soon)
-- **Bluetooth & WiFi**: Connect to ESP32 via BLE or WiFi hotspot
-- **Tool Marketplace**: Browse and install community tools directly to your device
-- **Real-time Console**: View script output and device logs in real-time
-- **Activity History**: Track your commands and device interactions
-- **Connection Presets**: Save and manage multiple device connections
-- **Favorites System**: Quick access to frequently used tools
+- **Bluetooth & WiFi**: Connect to ESP32 via BLE or WiFi
+- **Tool Marketplace**: Browse, download, and install community payloads
+- **Payload Management**: Upload, execute, and manage custom payloads
+- **Real-time Monitoring**: View payload output and device logs
+- **App Updates**: Automatic update checking from DeZer0-Tools releases
+- **Modern UI**: Redesigned sidebar with gradient effects and status indicators
 
-### ESP32 Firmware
-- **MicroPython Based**: Easy-to-modify Python-based firmware
-- **Tool Execution**: Run Python scripts uploaded from the mobile app
-- **WiFi Management**: Create hotspot or connect to existing networks
-- **OTA Updates**: Over-the-air firmware updates support
+### ESP32 Firmware v2.0 (NEW!)
+- **Modular Plugin System**: Dynamic payload loading with sandboxed execution
+- **Multiple Runtimes**: Support for Native C++ (.so), MicroPython (.mpy), and Lua (.lua)
+- **Hardware APIs**: WiFi, BLE, GPIO, Display (SSD1306), Storage
+- **OTA Updates**: Dual-partition OTA with rollback support
+- **Resource Management**: Memory and execution time limits per payload
+- **Permission System**: Fine-grained permissions for security
+- **Built-in Modules**: WiFi scanner, BLE scanner included
 
 ## 📁 Project Structure
 
@@ -40,21 +44,29 @@ DeZer0/
 │   ├── src/
 │   │   ├── app/         # Next.js pages (home, flasher, marketplace, download)
 │   │   ├── components/  # React components
-│   │   └── services/    # API services for GitHub integration
+│   │   └── services/    # API services (GitHub, marketplace, Vercel Blob)
 │   └── public/          # Static assets
 │
 ├── dezero_app/          # Flutter mobile application
 │   ├── lib/
-│   │   ├── screens/     # App screens (device, tools, apps, etc.)
-│   │   ├── services/    # BLE, WiFi, and marketplace services
+│   │   ├── screens/     # App screens (device, tools, apps, updates)
+│   │   ├── services/    # BLE, WiFi, app management, and marketplace services
 │   │   ├── models/      # Data models
 │   │   └── widgets/     # Reusable UI components
 │   └── android/         # Android-specific configuration
 │
-├── firmware/            # ESP32 MicroPython firmware
-│   ├── boot.py          # Boot configuration
-│   ├── main.py          # Main application logic
-│   └── lib/             # Required libraries (websockets, ssd1306)
+├── firmware/            # ESP-IDF C++ firmware (v2.0)
+│   ├── main/
+│   │   ├── core/        # Boot manager, plugin manager, storage manager
+│   │   ├── hal/         # Hardware abstraction (WiFi, BLE, GPIO, Display)
+│   │   ├── communication/ # BLE server, WiFi manager, WebSocket
+│   │   ├── runtimes/    # Native, MicroPython, Lua payload loaders
+│   │   └── builtins/    # Built-in modules (WiFi/BLE scanners)
+│   ├── CMakeLists.txt   # Build configuration
+│   ├── partitions.csv   # Flash partition table
+│   └── BUILD_GUIDE.md   # Firmware build instructions
+│
+├── build_firmware.py    # Automated firmware build script
 │
 └── .github/             # GitHub Actions workflows
 ```
@@ -65,37 +77,106 @@ DeZer0/
 
 - **For Web Flasher**: Chrome 89+, Edge 89+, or Opera 75+ browser
 - **For Mobile App**: Android 6.0+ device with Bluetooth 4.0 (BLE)
-- **For ESP32**: ESP32 development board with USB connection
+- **For Firmware Build**: ESP-IDF v5.0+, Python 3.8+, CMake 3.16+
+- **For Flashing**: ESP32 development board with USB connection
 
 ### Quick Start
 
-#### 1. Flash Firmware
+#### 1. Build Firmware (NEW!)
+
+```bash
+# Clone repository
+git clone https://github.com/devkiraa/DeZer0.git
+cd DeZer0
+
+# Setup ESP-IDF environment
+# Windows PowerShell:
+. $env:IDF_PATH\export.ps1
+# Linux/macOS:
+. $HOME/esp/esp-idf/export.sh
+
+# Build firmware with automated script
+python build_firmware.py
+
+# Binaries will be in firmware_bins/ directory
+```
+
+#### 2. Flash Firmware
+
+**Option A: Using Web Flasher (Recommended)**
 
 Visit the [Web Flasher](https://your-deployment-url.com/flasher) and follow these steps:
 
 1. Connect your ESP32 to your computer via USB
 2. Put ESP32 in bootloader mode (hold BOOT, press RESET, release BOOT)
 3. Click "Connect Device" and select your ESP32 port
-4. Select firmware version
+4. Select firmware version from releases
 5. Click "Flash Firmware" and wait for completion
 
-#### 2. Install Mobile App
+**Option B: Using Build Script (Development)**
 
-1. Download the latest APK from the [Download Page](https://your-deployment-url.com/download)
+```bash
+cd firmware_bins
+# Windows:
+.\flash.ps1 COM3
+# Linux/macOS:
+./flash.sh /dev/ttyUSB0
+```
+
+**Option C: Manual with esptool**
+
+```bash
+esptool.py --chip esp32 --port COM3 --baud 460800 write_flash -z \
+  0x1000 bootloader.bin \
+  0x8000 partition-table.bin \
+  0x10000 dezero_firmware.bin
+```
+
+#### 3. Install Mobile App
+
+1. Download the latest APK from [DeZer0-Tools Releases](https://github.com/devkiraa/DeZer0-Tools/releases)
 2. Enable "Install from Unknown Sources" in Android settings
 3. Install the APK
 4. Grant Bluetooth and Location permissions
 
-#### 3. Connect and Use
+#### 4. Connect and Use
 
-1. Power on your ESP32 device
+1. Power on your ESP32 device (will show "DeZero v2.0" on display)
 2. Open DeZer0 mobile app
 3. Navigate to "Device" screen
-4. Connect via Bluetooth or WiFi
-5. Browse and install tools from the "Tools" marketplace
-6. Run installed tools from the "Apps" screen
+4. Connect via Bluetooth (device name: "DeZero")
+5. Browse payloads from "Tools" marketplace
+6. Upload and execute payloads
+7. Monitor execution in real-time
 
-## 🔧 Development Setup
+## 🔧 Development
+
+### Building Firmware
+
+See [firmware/BUILD_GUIDE.md](firmware/BUILD_GUIDE.md) for detailed build instructions.
+
+Quick build:
+```bash
+python build_firmware.py
+```
+
+Incremental build (faster):
+```bash
+python build_firmware.py --no-clean
+```
+
+### Creating Payloads
+
+See [firmware/payloads/README.md](firmware/payloads/README.md) for payload development guide.
+
+Three runtime types supported:
+1. **Native C++** (.so) - Maximum performance, compiled code
+2. **MicroPython** (.mpy) - Python scripts, cross-compiled
+3. **Lua** (.lua) - Lua scripts, interpreted
+
+All payloads use the same API defined in `firmware/main/include/payload_api.h`.
+
+## 💻 Development Setup
 
 ### Web Flasher
 
@@ -106,57 +187,70 @@ npm run dev
 # Open http://localhost:3000
 ```
 
+#### Vercel Blob Cache Setup
+```bash
+# Set environment variable
+BLOB_READ_WRITE_TOKEN=your_token_here
+
+# Manual sync (or wait for cron)
+curl http://localhost:3000/api/tools/sync
+```
+
 ### Mobile App
 
 ```bash
 cd dezero_app
 flutter pub get
-flutter run
+flutter run -d <device_id>
 ```
 
-### ESP32 Firmware
+### Firmware Development
 
-Upload the firmware files to your ESP32 using a tool like `ampy` or `rshell`:
+See [firmware/BUILD_GUIDE.md](firmware/BUILD_GUIDE.md) for complete guide.
 
 ```bash
 cd firmware
-ampy --port /dev/ttyUSB0 put boot.py
-ampy --port /dev/ttyUSB0 put main.py
-ampy --port /dev/ttyUSB0 put ssd1306.py
+idf.py build
+idf.py -p COM3 flash monitor
 ```
 
 ## 📱 Mobile App Features
 
 ### Device Management
-- **BLE Scanner**: Discover nearby ESP32 devices
-- **WiFi Hotspot**: Connect via ESP32's WiFi network
-- **Connection Presets**: Save device configurations
-- **Auto-reconnect**: Automatic reconnection on connection loss
+- **BLE Connection**: Discover and connect to ESP32 via Bluetooth
+- **WiFi Connection**: Connect via WiFi (future feature)
+- **Real-time Status**: Connection state and battery level
+- **Device Info**: Firmware version, uptime, memory usage
 
-### Tool Management
-- **Marketplace Integration**: Browse GitHub-hosted tools
-- **Category Filtering**: Tools organized by functionality
-- **Search & Tags**: Find tools quickly
-- **Download & Install**: One-tap tool installation
-- **Favorites**: Mark frequently used tools
+### Payload Management
+- **Marketplace Browser**: Browse community payloads from DeZer0-Tools
+- **Category Filtering**: WiFi, Bluetooth, GPIO, Security, etc.
+- **Upload Payloads**: Install custom payloads to device
+- **Execute & Monitor**: Run payloads and view real-time output
+- **Parameter Configuration**: Set payload parameters before execution
 
-### Activity & Logs
-- **Command History**: Track all executed commands
-- **Execution Logs**: View detailed output
-- **Timestamps**: See when actions occurred
-- **Export Options**: Save logs for debugging
+### System Features
+- **App Updates**: Check for new app versions from DeZer0-Tools
+- **Settings**: Configure app behavior and device preferences
+- **Modern UI**: Gradient sidebar with status indicators
+- **Activity Tracking**: Monitor payload execution history
 
 ## 🌐 Web Flasher Features
 
 ### Firmware Flashing
-- **GitHub Integration**: Auto-fetch latest releases
+- **GitHub Integration**: Auto-fetch releases from DeZer0-Tools
 - **Version Selection**: Choose specific firmware versions
-- **Dual File Flash**: Firmware + filesystem in one operation
+- **Web Serial API**: Browser-based flashing (no drivers needed)
 - **Error Recovery**: Robust error handling and retry logic
+- **Progress Tracking**: Real-time flashing progress
 
 ### Tool Marketplace
-- **Browse Tools**: Explore available ESP32 tools
-- **Category Filters**: Network, RF, Utilities, etc.
+- **Vercel Blob Cache**: Instant loading with 6-hour auto-sync
+- **Browse Payloads**: Explore 55+ community payloads
+- **Category Filters**: WiFi, Bluetooth, Radio, GPIO, Security, etc.
+- **Search**: Find payloads by name, description, or tags
+- **Pagination**: Smooth browsing with 12 items per page
+- **Direct Download**: Download payload packages for offline use
 - **Tool Details**: View descriptions, authors, and requirements
 - **Installation Guide**: Step-by-step setup instructions
 
@@ -164,34 +258,51 @@ ampy --port /dev/ttyUSB0 put ssd1306.py
 
 We welcome contributions! Here's how you can help:
 
-1. **Create Tools**: Build Python scripts for ESP32 with a `manifest.json`
+1. **Create Payloads**: Build tools using Native C++, MicroPython, or Lua with a `manifest.json`
 2. **Report Bugs**: Open issues on GitHub
-3. **Submit PRs**: Fix bugs or add features
+3. **Submit PRs**: Fix bugs, add features, or improve firmware
 4. **Documentation**: Improve guides and examples
+5. **Testing**: Test firmware on different ESP32 variants
 
-### Creating a Tool
+### Creating a Payload
 
-Create a new directory in `DeZer0-Tools` repository with:
+See [firmware/payloads/README.md](firmware/payloads/README.md) for complete guide.
+
+Example manifest for a MicroPython payload:
 
 ```json
-// manifest.json
 {
-  "id": "my-tool",
-  "name": "My Awesome Tool",
+  "id": "my-payload",
+  "name": "My Awesome Payload",
   "version": "1.0.0",
   "author": "Your Name",
-  "description": "What your tool does",
+  "description": "What your payload does",
   "category": "Utilities",
-  "scriptFilename": "my_tool.py",
-  "tags": ["tag1", "tag2"]
+  "payload": {
+    "type": "micropython",
+    "runtime": "micropython",
+    "entry": "payload",
+    "size": 8192
+  },
+  "requirements": {
+    "min_firmware_version": "2.0.0",
+    "apis": ["wifi", "display"],
+    "memory_kb": 32,
+    "storage_kb": 5
+  },
+  "permissions": ["wifi_scan", "display_write"],
+  "parameters": [
+    {
+      "name": "duration",
+      "type": "integer",
+      "label": "Scan Duration (seconds)",
+      "default": "10"
+    }
+  ]
 }
 ```
 
-```python
-# my_tool.py
-print("Hello from my tool!")
-# Your ESP32 Python code here
-```
+Submit to [DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools) repository.
 
 ## 📄 License
 
@@ -201,28 +312,40 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - **GitHub Repository**: [devkiraa/DeZer0](https://github.com/devkiraa/DeZer0)
 - **Tools Repository**: [devkiraa/DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)
-- **Web Flasher**: [Live Demo](#)
 - **Report Issues**: [GitHub Issues](https://github.com/devkiraa/DeZer0/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/devkiraa/DeZer0/discussions)
 
 ## 🙏 Acknowledgments
 
-- ESP32 community for hardware support
-- Flutter team for the amazing framework
-- Next.js team for the web framework
-- MicroPython community for ESP32 firmware
-- All contributors and tool creators
+- ESP32 community for hardware support and ESP-IDF framework
+- Flutter team for cross-platform mobile framework
+- Next.js and Vercel teams for web framework and hosting
+- Flipper Zero and ESP32 Marauder projects for inspiration
+- All contributors and payload creators
 
 ## 📊 System Requirements
 
+### Firmware Build
+- ESP-IDF v5.0 or later
+- Python 3.8+
+- CMake 3.16+
+- 2GB RAM minimum
+- 5GB disk space for ESP-IDF
+
 ### Web Flasher
-- Chrome 89+, Edge 89+, or Opera 75+
+- Chrome 89+, Edge 89+, or Opera 75+ (Web Serial API support)
 - USB connection to ESP32
-- 50MB free disk space
+- 10MB free disk space
 
 ### Mobile App
-- **Minimum**: Android 6.0, Bluetooth 4.0, 50MB storage
+- **Minimum**: Android 6.0, Bluetooth 4.0 (BLE), 50MB storage
 - **Recommended**: Android 8.0+, Bluetooth 5.0, 100MB storage
+
+### ESP32 Hardware
+- ESP32 (original), ESP32-S2, ESP32-S3, or ESP32-C3
+- 4MB flash minimum (8MB recommended)
+- USB cable with data lines (not charge-only)
+- Optional: SSD1306 OLED display (128x64)
 - Location permission (required for BLE scanning)
 - WiFi for marketplace access
 
