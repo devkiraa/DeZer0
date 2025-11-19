@@ -14,7 +14,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoConnect = false;
   bool _notifications = true;
-  bool _darkMode = true;
   String _lastConnectedIP = '';
   String _appVersion = '';
   String _buildNumber = '';
@@ -32,7 +31,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _autoConnect = prefs.getBool('auto_connect') ?? false;
         _notifications = prefs.getBool('notifications') ?? true;
-        _darkMode = prefs.getBool('dark_mode') ?? true;
         _lastConnectedIP = prefs.getString('last_connected_ip') ?? '';
       });
     }
@@ -378,16 +376,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 },
               ),
               const Divider(height: 1, color: FlipperColors.border),
-              _buildSwitchTile(
-                title: 'Dark Mode',
-                subtitle: 'Use dark theme (restart required)',
-                value: _darkMode,
-                icon: Icons.dark_mode_outlined,
-                onChanged: (value) {
-                  setState(() => _darkMode = value);
-                  _saveSetting('dark_mode', value);
-                },
-              ),
             ],
           ),
           const SizedBox(height: 24),
