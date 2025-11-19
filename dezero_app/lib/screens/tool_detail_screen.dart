@@ -218,6 +218,56 @@ class _ToolDetailScreenState extends State<ToolDetailScreen> {
             Text("Description", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),
             Text(widget.tool.description),
+            if (widget.tool.pinRequirements.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text("Hardware Requirements", style: Theme.of(context).textTheme.titleLarge),
+              const Divider(),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.orange),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.orange.withOpacity(0.1),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.warning_amber, color: Colors.orange, size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'This tool requires hardware configuration',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Please configure these components in Hardware Config before running:',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    ...widget.tool.pinRequirements.map((req) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.circle, size: 6),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${req.name} - ${req.function} (${req.mode})${req.description != null ? ': ${req.description}' : ''}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             Text("Changelog", style: Theme.of(context).textTheme.titleLarge),
             const Divider(),

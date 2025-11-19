@@ -1,0 +1,20 @@
+{
+  "id": "led_blink_tool",
+  "name": "LED Blink Tool",
+  "author": "devkiraa",
+  "version": "1.0.0",
+  "description": "Blinks an LED at a specific interval. Connect your LED to the configured pin.",
+  "category": "GPIO",
+  "size": "2 KB",
+  "script_filename": "led_blink.py",
+  "changelog": "Initial release - Simple LED blinking functionality",
+  "pin_requirements": [
+    {
+      "name": "LED",
+      "function": "Signal",
+      "mode": "output",
+      "required": true,
+      "description": "Status LED for blinking"
+    }
+  ]
+}

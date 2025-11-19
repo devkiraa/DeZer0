@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../models/tool_package.dart';
+import '../models/hardware_config.dart';
 import '../services/wifi_service.dart';
 import '../services/app_management_service.dart';
+import '../services/hardware_config_service.dart';
 import '../screens/activity_history_screen.dart';
+import '../screens/hardware_config_screen.dart';
 import '../theme/flipper_theme.dart';
 
 class RunToolScreen extends StatefulWidget {
@@ -138,14 +141,95 @@ class _RunToolScreenState extends State<RunToolScreen> {
     return;
   }
 
+  // Check if tool has pin requirements
+  if (widget.tool.pinRequirements.isNotEmpty) {
+    final configService = HardwareConfigService.instance;
+    final currentConfig = configService.currentConfig.value;
+    final missingPins = <ToolPinRequirement>[];
+
+    if (currentConfig == null) {
+      // No hardware config at all
+      missingPins.addAll(widget.tool.pinRequirements.where((req) => req.required));
+    } else {
+      for (final req in widget.tool.pinRequirements) {
+        if (!req.required) continue;
+        
+        // Check if a module with this name exists
+        HardwareModule? module;
+        for (final m in currentConfig.modules) {
+          if (m.name.toLowerCase() == req.name.toLowerCase()) {
+            module = m;
+            break;
+          }
+        }
+        
+        if (module == null) {
+          missingPins.add(req);
+          continue;
+        }
+        
+        // Check if the module has pins assigned in the global pinAssignments
+        bool hasAssignedPin = false;
+        for (final assignment in currentConfig.pinAssignments.values) {
+          if (assignment.moduleId == module.id && 
+              assignment.function.toLowerCase() == req.function.toLowerCase()) {
+            hasAssignedPin = true;
+            break;
+          }
+        }
+        
+        if (!hasAssignedPin) {
+          missingPins.add(req);
+        }
+      }
+    }
+
+    if (missingPins.isNotEmpty) {
+      _showPinConfigurationDialog(missingPins);
+      return;
+    }
+  }
+
   print("[DEBUG] Script content:\n$_scriptContent");
 
   final scriptBytes = utf8.encode(_scriptContent);
   final scriptBase64 = base64Encode(scriptBytes);
 
+  // Build pin mappings if tool has pin requirements
+  final pinMappings = <String, int>{};
+  if (widget.tool.pinRequirements.isNotEmpty) {
+    final configService = HardwareConfigService.instance;
+    final currentConfig = configService.currentConfig.value;
+    
+    if (currentConfig != null) {
+      for (final req in widget.tool.pinRequirements) {
+        // Find the module
+        HardwareModule? module;
+        for (final m in currentConfig.modules) {
+          if (m.name.toLowerCase() == req.name.toLowerCase()) {
+            module = m;
+            break;
+          }
+        }
+        
+        if (module != null) {
+          // Find the pin assignment for this module and function
+          for (final assignment in currentConfig.pinAssignments.values) {
+            if (assignment.moduleId == module.id && 
+                assignment.function.toLowerCase() == req.function.toLowerCase()) {
+              pinMappings['${req.name.toUpperCase()}_PIN'] = assignment.pin;
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
   final command = {
     "command": "execute_script",
-    "script": scriptBase64
+    "script": scriptBase64,
+    if (pinMappings.isNotEmpty) "pin_mappings": pinMappings,
   };
 
   final jsonCommand = jsonEncode(command);
@@ -155,6 +239,9 @@ class _RunToolScreenState extends State<RunToolScreen> {
     _isExecuting = true;
     _consoleLogs.clear();
     _consoleLogs.add("-> Executing '${widget.tool.name}' on DeZer0...");
+    if (pinMappings.isNotEmpty) {
+      _consoleLogs.add("-> Pin mappings: ${pinMappings.entries.map((e) => '${e.key}=${e.value}').join(', ')}");
+    }
   });
 
   // Log tool execution start
@@ -167,6 +254,117 @@ class _RunToolScreenState extends State<RunToolScreen> {
 
   widget.wifiService.sendCommand(jsonCommand);
 }
+
+  void _showPinConfigurationDialog(List<ToolPinRequirement> missingPins) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: FlipperColors.surface,
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: FlipperColors.warning),
+            SizedBox(width: 12),
+            Text(
+              'Hardware Configuration Required',
+              style: TextStyle(
+                color: FlipperColors.textSecondary,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'This tool requires hardware pins to be configured before running.',
+                style: TextStyle(
+                  color: FlipperColors.textSecondary,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Missing pin configurations:',
+                style: TextStyle(
+                  color: FlipperColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              ...missingPins.map((req) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.circle, size: 6, color: FlipperColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            req.name,
+                            style: const TextStyle(
+                              color: FlipperColors.textSecondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          if (req.description != null)
+                            Text(
+                              req.description!,
+                              style: const TextStyle(
+                                color: FlipperColors.textTertiary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          Text(
+                            '${req.function} (${req.mode})',
+                            style: const TextStyle(
+                              color: FlipperColors.textTertiary,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(color: FlipperColors.textTertiary),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const HardwareConfigScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: FlipperColors.primary,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('CONFIGURE HARDWARE'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _scrollToBottom() {
     Future.delayed(const Duration(milliseconds: 100), () {

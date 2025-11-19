@@ -1,3 +1,39 @@
+class ToolPinRequirement {
+  final String name;
+  final String function;
+  final String mode;
+  final bool required;
+  final String? description;
+
+  ToolPinRequirement({
+    required this.name,
+    required this.function,
+    required this.mode,
+    required this.required,
+    this.description,
+  });
+
+  factory ToolPinRequirement.fromJson(Map<String, dynamic> json) {
+    return ToolPinRequirement(
+      name: json['name'] ?? '',
+      function: json['function'] ?? 'Signal',
+      mode: json['mode'] ?? 'output',
+      required: json['required'] ?? true,
+      description: json['description'],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'function': function,
+      'mode': mode,
+      'required': required,
+      if (description != null) 'description': description,
+    };
+  }
+}
+
 class ToolPackage {
   final String id;
   final String name;
@@ -7,7 +43,8 @@ class ToolPackage {
   final String category;
   final String size;
   final String scriptFilename;
-  final String changelog; // Added
+  final String changelog;
+  final List<ToolPinRequirement> pinRequirements;
 
   ToolPackage({
     required this.id,
@@ -18,7 +55,8 @@ class ToolPackage {
     required this.category,
     required this.size,
     required this.scriptFilename,
-    required this.changelog, // Added
+    required this.changelog,
+    this.pinRequirements = const [],
   });
 
   factory ToolPackage.fromJson(Map<String, dynamic> json) {
@@ -31,7 +69,11 @@ class ToolPackage {
       category: json['category'] ?? 'General',
       size: json['size'] ?? '0 KB',
       scriptFilename: json['script_filename'] ?? '',
-      changelog: json['changelog'] ?? 'No changelog available.', // Added
+      changelog: json['changelog'] ?? 'No changelog available.',
+      pinRequirements: (json['pin_requirements'] as List<dynamic>?)
+              ?.map((e) => ToolPinRequirement.fromJson(e))
+              .toList() ??
+          [],
     );
   }
 }

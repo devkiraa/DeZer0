@@ -6,6 +6,8 @@ import 'services/app_management_service.dart';
 import 'screens/device_screen.dart';
 import 'screens/apps_screen.dart';
 import 'screens/tools_screen.dart';
+import 'screens/hardware_config_screen.dart';
+import 'screens/payloads_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/activity_history_screen.dart';
@@ -38,6 +40,12 @@ class _MainScreenState extends State<MainScreen> {
     _scaffoldKey.currentState?.openDrawer();
   }
 
+  String? _getDeviceIP() {
+    // Try to get device IP from SharedPreferences synchronously
+    // Note: This is a simplified approach. Consider using FutureBuilder in production.
+    return null; // Will be fetched async in HardwareConfigScreen
+  }
+
   List<Widget> get _widgetOptions => [
     DeviceScreen(
       wifiService: _wifiService,
@@ -53,6 +61,9 @@ class _MainScreenState extends State<MainScreen> {
       wifiService: _wifiService,
       appManagementService: _appManagementService,
       onMenuPressed: _openDrawer,
+    ),
+    HardwareConfigScreen(
+      deviceIP: _getDeviceIP(),
     ),
   ];
 
@@ -170,6 +181,23 @@ class _MainScreenState extends State<MainScreen> {
                       MaterialPageRoute(
                         builder: (context) => FavoritesScreen(
                           wifiService: _wifiService,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.widgets_rounded,
+                  title: 'Payloads',
+                  subtitle: 'Manage payloads',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PayloadsScreen(
+                          wifiService: _wifiService,
+                          onMenuPressed: _openDrawer,
                         ),
                       ),
                     );
@@ -484,6 +512,10 @@ class _MainScreenState extends State<MainScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.construction),
               label: 'TOOLS',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.developer_board),
+              label: 'HARDWARE',
             ),
           ],
           currentIndex: _selectedIndex,
