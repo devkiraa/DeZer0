@@ -4,6 +4,11 @@
 
 DeZer0 is a comprehensive platform designed for ESP32 device management, featuring a web-based firmware flasher, a Flutter mobile app for device control, and an extensible tool ecosystem. Flash firmware directly from your browser, manage tools, and control your ESP32 devices wirelessly.
 
+## 📦 Repositories
+
+- **[DeZer0](https://github.com/devkiraa/DeZer0)** - Main repository (web flasher, mobile app, ESP32 firmware)
+- **[DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)** - Community tools and app releases
+
 ## 🚀 Features
 
 ### Web Flasher

@@ -1,7 +1,7 @@
 {
   "github": {
     "owner": "devkiraa",
-    "repo": "DeZer0",
+    "repo": "DeZer0-Tools",
     "firmwareAssetPatterns": {
       "firmware": "firmware.*\\.bin$",
       "filesystem": "filesystem.*\\.bin$"

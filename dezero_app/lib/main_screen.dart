@@ -9,6 +9,7 @@ import 'screens/tools_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/activity_history_screen.dart';
+import 'screens/updates_screen.dart';
 import 'theme/flipper_theme.dart';
 
 class MainScreen extends StatefulWidget {
@@ -70,126 +71,312 @@ class _MainScreenState extends State<MainScreen> {
   Widget _buildDrawer() {
     return Drawer(
       backgroundColor: FlipperColors.background,
-      child: ListView(
-        padding: EdgeInsets.zero,
+      child: Column(
         children: [
-          DrawerHeader(
-            decoration: const BoxDecoration(
-              color: FlipperColors.surface,
-              border: Border(
+          // Modern header with gradient
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 60, 24, 32),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  FlipperColors.surface,
+                  FlipperColors.background,
+                ],
+              ),
+              border: const Border(
                 bottom: BorderSide(color: FlipperColors.primary, width: 2),
               ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // Icon with glow effect
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
+                    color: FlipperColors.surface,
                     border: Border.all(color: FlipperColors.primary, width: 2),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: FlipperColors.primary.withOpacity(0.3),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                    ],
                   ),
                   child: const Icon(
                     Icons.developer_board,
-                    size: 32,
+                    size: 36,
                     color: FlipperColors.primary,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+                // App name with version
                 const Text(
                   'DEZERO',
                   style: TextStyle(
                     fontFamily: 'monospace',
-                    fontSize: 24,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: FlipperColors.primary,
+                    letterSpacing: 2,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ESP32 TOOLKIT',
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                    color: FlipperColors.textSecondary.withOpacity(0.7),
+                    letterSpacing: 1.5,
                   ),
                 ),
               ],
             ),
           ),
-          _buildDrawerItem(
-            icon: Icons.star,
-            title: 'Favorites',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => FavoritesScreen(
-                    wifiService: _wifiService,
+          // Menu items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 16, 24, 8),
+                  child: Text(
+                    'QUICK ACCESS',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: FlipperColors.textSecondary,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.history,
-            title: 'Activity History',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const ActivityHistoryScreen(),
+                _buildModernDrawerItem(
+                  icon: Icons.star_rounded,
+                  title: 'Favorites',
+                  subtitle: 'Starred tools',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => FavoritesScreen(
+                          wifiService: _wifiService,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-          _buildDrawerItem(
-            icon: Icons.update,
-            title: 'Updates',
-            onTap: () {
-              Navigator.pop(context);
-              // Updates screen navigation
-            },
-          ),
-          const Divider(color: FlipperColors.border, height: 1),
-          _buildDrawerItem(
-            icon: Icons.settings,
-            title: 'Settings',
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const SettingsScreen(),
+                _buildModernDrawerItem(
+                  icon: Icons.history_rounded,
+                  title: 'Activity History',
+                  subtitle: 'Recent actions',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ActivityHistoryScreen(),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
+                _buildModernDrawerItem(
+                  icon: Icons.system_update_rounded,
+                  title: 'Updates',
+                  subtitle: 'Check for updates',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const UpdatesScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(24, 24, 24, 8),
+                  child: Text(
+                    'SYSTEM',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: FlipperColors.textSecondary,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.settings_rounded,
+                  title: 'Settings',
+                  subtitle: 'App preferences',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildModernDrawerItem(
+                  icon: Icons.info_outline_rounded,
+                  title: 'About',
+                  subtitle: 'App information',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _showAboutDialog();
+                  },
+                ),
+              ],
+            ),
           ),
-          _buildDrawerItem(
-            icon: Icons.info_outline,
-            title: 'About',
-            onTap: () {
-              Navigator.pop(context);
-              _showAboutDialog();
-            },
+          // Footer
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: FlipperColors.border.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: Colors.green,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.green.withOpacity(0.5),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'CONNECTED',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: FlipperColors.textSecondary,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+                Text(
+                  'v1.0.0',
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 10,
+                    color: FlipperColors.textSecondary.withOpacity(0.6),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDrawerItem({
+  Widget _buildModernDrawerItem({
     required IconData icon,
     required String title,
+    required String subtitle,
     required VoidCallback onTap,
   }) {
-    return ListTile(
-      leading: Icon(icon, color: FlipperColors.primary),
-      title: Text(
-        title.toUpperCase(),
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: FlipperColors.textPrimary,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.transparent,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: FlipperColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: FlipperColors.primary.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: FlipperColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title.toUpperCase(),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: FlipperColors.textPrimary,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 10,
+                          color: FlipperColors.textSecondary.withOpacity(0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: FlipperColors.textSecondary.withOpacity(0.5),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      onTap: onTap,
     );
   }
 

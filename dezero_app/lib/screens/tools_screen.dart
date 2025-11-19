@@ -6,7 +6,7 @@ import '../services/marketplace_service.dart';
 import '../models/tool_package.dart';
 import '../theme/flipper_theme.dart';
 import 'tool_detail_screen.dart';
-import 'updates_screen.dart';
+import 'tool_updates_screen.dart';
 
 class ToolsScreen extends StatefulWidget {
   final WifiService wifiService;
@@ -396,7 +396,7 @@ class _ToolsScreenState extends State<ToolsScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => UpdatesScreen(
+                      builder: (context) => ToolUpdatesScreen(
                         updatableTools: updatableTools,
                         wifiService: widget.wifiService,
                         appManagementService: widget.appManagementService,
