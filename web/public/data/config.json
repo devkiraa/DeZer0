@@ -1,0 +1,34 @@
+{
+  "nex": {
+    "apiBase": "https://nex-9ujp.onrender.com/api",
+    "registry": "nexhq/nex",
+    "docsUrl": "https://try-nex.vercel.app"
+  },
+  "github": {
+    "owner": "devkiraa",
+    "repo": "DeZer0",
+    "firmwareAssetPatterns": {
+      "bootloader": "bootloader.*\\.bin$",
+      "partition": "partition.*\\.bin$",
+      "firmware": "(firmware|dezero_firmware).*\\.bin$"
+    }
+  },
+  "flash": {
+    "baudrate": 115200,
+    "flashOptions": {
+      "bootloader": {
+        "address": "0x1000"
+      },
+      "partition": {
+        "address": "0x8000"
+      },
+      "firmware": {
+        "address": "0x10000"
+      },
+      "flashSize": "4MB",
+      "flashFreq": "40m",
+      "flashMode": "dio",
+      "eraseAll": true
+    }
+  }
+}

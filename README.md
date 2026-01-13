@@ -7,7 +7,8 @@ DeZer0 is a powerful ESP32-based platform for wireless security research, featur
 ## 📦 Repositories
 
 - **[DeZer0](https://github.com/devkiraa/DeZer0)** - Main repository (source code, web flasher, mobile app, firmware)
-- **[DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)** - Community tools marketplace and app releases
+- **[Nex Registry](https://try-nex.vercel.app)** - Tool marketplace powered by Nex package manager
+- **[Nex CLI](https://github.com/nexhq/nex)** - The AI-Native package manager for developer tools
 
 ## 🚀 Features
 
@@ -16,7 +17,7 @@ DeZer0 is a powerful ESP32-based platform for wireless security research, featur
 - **Release Management**: Automatic firmware updates from GitHub releases
 - **Real-time Progress**: Live flashing progress with detailed console output
 - **Cross-Platform**: Works on Chrome, Edge, and Opera browsers
-- **Tools Marketplace**: Browse and download community tools with Vercel Blob caching
+- **Tools Marketplace**: Browse and download community tools powered by Nex Registry
 
 ### Mobile App
 - **Multi-Platform**: Flutter app for Android (iOS support coming soon)
@@ -24,7 +25,7 @@ DeZer0 is a powerful ESP32-based platform for wireless security research, featur
 - **Tool Marketplace**: Browse, download, and install community payloads
 - **Payload Management**: Upload, execute, and manage custom payloads
 - **Real-time Monitoring**: View payload output and device logs
-- **App Updates**: Automatic update checking from DeZer0-Tools releases
+- **App Updates**: Automatic update checking from DeZer0 releases
 - **Modern UI**: Redesigned sidebar with gradient effects and status indicators
 
 ### ESP32 Firmware v2.0 (NEW!)
@@ -40,14 +41,14 @@ DeZer0 is a powerful ESP32-based platform for wireless security research, featur
 
 ```
 DeZer0/
-├── web_flasher/          # Next.js web application for ESP32 firmware flashing
+├── web/                  # Next.js web application for ESP32 firmware flashing
 │   ├── src/
 │   │   ├── app/         # Next.js pages (home, flasher, marketplace, download)
 │   │   ├── components/  # React components
 │   │   └── services/    # API services (GitHub, marketplace, Vercel Blob)
 │   └── public/          # Static assets
 │
-├── dezero_app/          # Flutter mobile application
+├── mobile/              # Flutter mobile application
 │   ├── lib/
 │   │   ├── screens/     # App screens (device, tools, apps, updates)
 │   │   ├── services/    # BLE, WiFi, app management, and marketplace services
@@ -66,7 +67,7 @@ DeZer0/
 │   ├── partitions.csv   # Flash partition table
 │   └── BUILD_GUIDE.md   # Firmware build instructions
 │
-├── build_firmware.py    # Automated firmware build script
+├── build_with_docker.py # Automated firmware build script (Docker)
 │
 └── .github/             # GitHub Actions workflows
 ```
@@ -96,7 +97,9 @@ cd DeZer0
 . $HOME/esp/esp-idf/export.sh
 
 # Build firmware with automated script
-python build_firmware.py
+python build_with_docker.py
+# OR if you have local ESP-IDF:
+# cd firmware && idf.py build
 
 # Binaries will be in firmware_bins/ directory
 ```
@@ -134,7 +137,7 @@ esptool.py --chip esp32 --port COM3 --baud 460800 write_flash -z \
 
 #### 3. Install Mobile App
 
-1. Download the latest APK from [DeZer0-Tools Releases](https://github.com/devkiraa/DeZer0-Tools/releases)
+1. Download the latest APK from [DeZer0 Releases](https://github.com/devkiraa/DeZer0/releases)
 2. Enable "Install from Unknown Sources" in Android settings
 3. Install the APK
 4. Grant Bluetooth and Location permissions
@@ -157,12 +160,12 @@ See [firmware/BUILD_GUIDE.md](firmware/BUILD_GUIDE.md) for detailed build instru
 
 Quick build:
 ```bash
-python build_firmware.py
+python build_with_docker.py
 ```
 
 Incremental build (faster):
 ```bash
-python build_firmware.py --no-clean
+python build_with_docker.py --clean
 ```
 
 ### Creating Payloads
@@ -181,7 +184,7 @@ All payloads use the same API defined in `firmware/main/include/payload_api.h`.
 ### Web Flasher
 
 ```bash
-cd web_flasher
+cd web
 npm install
 npm run dev
 # Open http://localhost:3000
@@ -199,7 +202,7 @@ curl http://localhost:3000/api/tools/sync
 ### Mobile App
 
 ```bash
-cd dezero_app
+cd mobile
 flutter pub get
 flutter run -d <device_id>
 ```
@@ -223,14 +226,14 @@ idf.py -p COM3 flash monitor
 - **Device Info**: Firmware version, uptime, memory usage
 
 ### Payload Management
-- **Marketplace Browser**: Browse community payloads from DeZer0-Tools
+- **Marketplace Browser**: Browse community tools via Nex Registry
 - **Category Filtering**: WiFi, Bluetooth, GPIO, Security, etc.
 - **Upload Payloads**: Install custom payloads to device
 - **Execute & Monitor**: Run payloads and view real-time output
 - **Parameter Configuration**: Set payload parameters before execution
 
 ### System Features
-- **App Updates**: Check for new app versions from DeZer0-Tools
+- **App Updates**: Check for new app versions from DeZer0 releases
 - **Settings**: Configure app behavior and device preferences
 - **Modern UI**: Gradient sidebar with status indicators
 - **Activity Tracking**: Monitor payload execution history
@@ -238,15 +241,15 @@ idf.py -p COM3 flash monitor
 ## 🌐 Web Flasher Features
 
 ### Firmware Flashing
-- **GitHub Integration**: Auto-fetch releases from DeZer0-Tools
+- **Nex Registry**: Auto-fetch packages from Nex API
 - **Version Selection**: Choose specific firmware versions
 - **Web Serial API**: Browser-based flashing (no drivers needed)
 - **Error Recovery**: Robust error handling and retry logic
 - **Progress Tracking**: Real-time flashing progress
 
 ### Tool Marketplace
-- **Vercel Blob Cache**: Instant loading with 6-hour auto-sync
-- **Browse Payloads**: Explore 55+ community payloads
+- **Nex Integration**: Auto-fetch packages from Nex Registry API
+- **Browse Packages**: Explore community tools via Nex package manager
 - **Category Filters**: WiFi, Bluetooth, Radio, GPIO, Security, etc.
 - **Search**: Find payloads by name, description, or tags
 - **Pagination**: Smooth browsing with 12 items per page
@@ -302,7 +305,18 @@ Example manifest for a MicroPython payload:
 }
 ```
 
-Submit to [DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools) repository.
+Publish your tools using [Nex package manager](https://github.com/nexhq/nex):
+
+```bash
+# Install Nex CLI
+iwr https://raw.githubusercontent.com/nexhq/nex/main/cli/install.ps1 | iex
+
+# Create a new package
+nex init
+
+# Publish to registry
+nex publish
+```
 
 ## 📄 License
 
@@ -311,7 +325,8 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🔗 Links
 
 - **GitHub Repository**: [devkiraa/DeZer0](https://github.com/devkiraa/DeZer0)
-- **Tools Repository**: [devkiraa/DeZer0-Tools](https://github.com/devkiraa/DeZer0-Tools)
+- **Tools Registry**: [Nex Registry](https://try-nex.vercel.app)
+- **Nex CLI**: [nexhq/nex](https://github.com/nexhq/nex)
 - **Report Issues**: [GitHub Issues](https://github.com/devkiraa/DeZer0/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/devkiraa/DeZer0/discussions)
 

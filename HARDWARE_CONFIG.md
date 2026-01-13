@@ -486,7 +486,7 @@ await payloadService.executePayload(
 
 ## File Structure
 ```
-dezero_app/
+mobile/
 ├── lib/
 │   ├── models/
 │   │   ├── hardware_config.dart      # Data models

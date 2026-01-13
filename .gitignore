@@ -46,7 +46,19 @@ DeZer0-*.apk
 
 # Build Artifacts
 firmware/build/
+# General
+.idea/
+.vscode/
+*.log
+.DS_Store
+Thumbs.db
+
+# Project Specific
 firmware_bins/
+*.bin
+*.elf
+*.map
+
 managed_components/
 dependencies.lock
 *.pyc

@@ -40,13 +40,15 @@ cd path/to/DeZer0
 
 ### Step 3: Build Firmware
 
+### Step 3: Build Firmware
+
 ```bash
 # Automated build (recommended)
-python build_firmware.py
+python build_with_docker.py
 ```
 
 This will:
-- ✅ Check ESP-IDF installation
+- ✅ Check Docker installation
 - ✅ Configure build for ESP32
 - ✅ Compile all source files
 - ✅ Generate .bin files
@@ -98,10 +100,10 @@ After flashing, you should see:
 
 ### Incremental Builds (Faster)
 
-After first build, use `--no-clean` for faster incremental builds:
+After first build, use `--clean` to force clean build if needed, otherwise it's incremental by default in docker if volume persists, or use local build:
 
 ```bash
-python build_firmware.py --no-clean
+python build_with_docker.py
 ```
 
 This skips the clean step and only recompiles changed files.
@@ -239,7 +241,7 @@ firmware_bins/
 After successful flash:
 
 1. **Install Mobile App**
-   - Download from [DeZer0-Tools Releases](https://github.com/devkiraa/DeZer0-Tools/releases)
+   - Download from [DeZer0 Releases](https://github.com/devkiraa/DeZer0/releases)
    - Install APK on Android device
 
 2. **Connect via BLE**
@@ -252,10 +254,10 @@ After successful flash:
    - Download and install payloads
    - Execute and monitor output
 
-4. **Create Custom Payloads**
-   - See [firmware/payloads/README.md](firmware/payloads/README.md)
-   - Use Native C++, MicroPython, or Lua
-   - Submit to DeZer0-Tools repo
+4. **Create Custom Tools**
+   - Install [Nex CLI](https://github.com/nexhq/nex): `iwr https://raw.githubusercontent.com/nexhq/nex/main/cli/install.ps1 | iex`
+   - Create new package: `nex init`
+   - Publish to registry: `nex publish`
 
 ## 📚 Additional Resources
 

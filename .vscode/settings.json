@@ -1,5 +1,5 @@
 {
     "java.configuration.updateBuildConfiguration": "interactive",
     "postman.settings.dotenv-detection-notification-visibility": false,
-    "cmake.sourceDirectory": "D:/Repository/DeZer0/firmware"
+    "cmake.sourceDirectory": "D:/Repository/DeZer0/esp32_firmware"
 }

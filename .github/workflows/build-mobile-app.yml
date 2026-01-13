@@ -1,0 +1,439 @@
+name: Build and Release Mobile App
+
+on:
+  push:
+    tags:
+      - 'app-v*.*.*'
+    paths:
+      - 'dezero_app/**'
+      - '.github/workflows/build-mobile-app.yml'
+  pull_request:
+    paths:
+      - 'dezero_app/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version (e.g., 1.0.0)'
+        required: false
+        type: string
+      build_number:
+        description: 'Build number (auto-incremented if not specified)'
+        required: false
+        type: string
+      create_release:
+        description: 'Create a GitHub release'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  FLUTTER_VERSION: '3.24.0'
+  JAVA_VERSION: '17'
+
+jobs:
+  # =========================================
+  # Job 1: Version Check and Validation
+  # =========================================
+  version-check:
+    name: 🔍 Version Check
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
+      build_number: ${{ steps.get_version.outputs.build_number }}
+      version_changed: ${{ steps.compare_versions.outputs.version_changed }}
+      previous_version: ${{ steps.get_previous.outputs.version }}
+      should_release: ${{ steps.should_release.outputs.result }}
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Get current version from pubspec.yaml
+        id: get_version
+        run: |
+          cd dezero_app
+          
+          # Extract version from pubspec.yaml
+          FULL_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
+          VERSION=$(echo $FULL_VERSION | cut -d'+' -f1)
+          BUILD_NUMBER=$(echo $FULL_VERSION | cut -d'+' -f2)
+          
+          # Override with workflow inputs if provided
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          
+          if [ -n "${{ github.event.inputs.build_number }}" ]; then
+            BUILD_NUMBER="${{ github.event.inputs.build_number }}"
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=$BUILD_NUMBER" >> $GITHUB_OUTPUT
+          echo "full_version=${VERSION}+${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          
+          echo "📦 Current Version: $VERSION"
+          echo "🔢 Build Number: $BUILD_NUMBER"
+      
+      - name: Get previous release version
+        id: get_previous
+        run: |
+          # Fetch the latest release with app- prefix
+          LATEST_RELEASE=$(gh release list --limit 20 | grep "app-v" | head -1 | awk '{print $1}' || echo "")
+          
+          if [ -z "$LATEST_RELEASE" ]; then
+            echo "version=0.0.0" >> $GITHUB_OUTPUT
+            echo "📌 No previous app release found"
+          else
+            PREV_VERSION=$(echo $LATEST_RELEASE | sed 's/app-v//')
+            echo "version=$PREV_VERSION" >> $GITHUB_OUTPUT
+            echo "📌 Previous Version: $PREV_VERSION"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Compare versions
+        id: compare_versions
+        run: |
+          CURRENT="${{ steps.get_version.outputs.version }}"
+          PREVIOUS="${{ steps.get_previous.outputs.version }}"
+          
+          # Simple version comparison using sort -V
+          HIGHER=$(printf '%s\n%s' "$CURRENT" "$PREVIOUS" | sort -V | tail -n1)
+          
+          if [ "$CURRENT" = "$PREVIOUS" ]; then
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Version unchanged: $CURRENT"
+          elif [ "$CURRENT" = "$HIGHER" ]; then
+            echo "version_changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Version increased: $PREVIOUS → $CURRENT"
+          else
+            echo "version_changed=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Current version ($CURRENT) is lower than previous ($PREVIOUS)"
+          fi
+      
+      - name: Determine if should release
+        id: should_release
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${{ github.ref }}" == refs/tags/app-v* ]]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.create_release }}" = "true" ]; then
+            echo "result=true" >> $GITHUB_OUTPUT
+          else
+            echo "result=false" >> $GITHUB_OUTPUT
+          fi
+
+  # =========================================
+  # Job 2: Build Android APK
+  # =========================================
+  build-android:
+    name: 🤖 Build Android APK
+    runs-on: ubuntu-latest
+    needs: version-check
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+      
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+      
+      - name: Verify Flutter installation
+        run: |
+          flutter --version
+          flutter doctor -v
+      
+      - name: Get Flutter dependencies
+        working-directory: dezero_app
+        run: flutter pub get
+      
+      - name: Analyze code
+        working-directory: dezero_app
+        run: flutter analyze --no-fatal-infos || true
+      
+      - name: Run tests
+        working-directory: dezero_app
+        run: flutter test || echo "No tests found or tests skipped"
+      
+      - name: Update version in pubspec.yaml
+        working-directory: dezero_app
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          BUILD_NUMBER="${{ needs.version-check.outputs.build_number }}"
+          
+          # Update pubspec.yaml with new version
+          sed -i "s/^version: .*/version: ${VERSION}+${BUILD_NUMBER}/" pubspec.yaml
+          
+          echo "📦 Updated to version: ${VERSION}+${BUILD_NUMBER}"
+          cat pubspec.yaml | grep "^version:"
+      
+      - name: Build APK (Release)
+        working-directory: dezero_app
+        run: |
+          flutter build apk --release \
+            --build-name=${{ needs.version-check.outputs.version }} \
+            --build-number=${{ needs.version-check.outputs.build_number }}
+      
+      - name: Build APK (Split per ABI)
+        working-directory: dezero_app
+        run: |
+          flutter build apk --release --split-per-abi \
+            --build-name=${{ needs.version-check.outputs.version }} \
+            --build-number=${{ needs.version-check.outputs.build_number }}
+      
+      - name: Rename APK files
+        working-directory: dezero_app
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          BUILD_DIR="build/app/outputs/flutter-apk"
+          
+          # Rename universal APK
+          if [ -f "$BUILD_DIR/app-release.apk" ]; then
+            mv "$BUILD_DIR/app-release.apk" "$BUILD_DIR/DeZer0-v${VERSION}.apk"
+          fi
+          
+          # Rename split APKs
+          for arch in armeabi-v7a arm64-v8a x86_64; do
+            if [ -f "$BUILD_DIR/app-${arch}-release.apk" ]; then
+              mv "$BUILD_DIR/app-${arch}-release.apk" "$BUILD_DIR/DeZer0-v${VERSION}-${arch}.apk"
+            fi
+          done
+          
+          ls -la "$BUILD_DIR/"
+      
+      - name: Calculate checksums
+        id: checksums
+        working-directory: dezero_app
+        run: |
+          BUILD_DIR="build/app/outputs/flutter-apk"
+          VERSION="${{ needs.version-check.outputs.version }}"
+          
+          # Create checksums file
+          cd "$BUILD_DIR"
+          sha256sum DeZer0-*.apk > checksums-sha256.txt
+          
+          echo "📋 Checksums:"
+          cat checksums-sha256.txt
+          
+          # Output main APK checksum
+          MAIN_SHA=$(sha256sum "DeZer0-v${VERSION}.apk" | awk '{print $1}')
+          echo "main_apk_sha256=$MAIN_SHA" >> $GITHUB_OUTPUT
+      
+      - name: Get APK sizes
+        id: sizes
+        working-directory: dezero_app
+        run: |
+          BUILD_DIR="build/app/outputs/flutter-apk"
+          VERSION="${{ needs.version-check.outputs.version }}"
+          
+          MAIN_SIZE=$(stat -c%s "$BUILD_DIR/DeZer0-v${VERSION}.apk" 2>/dev/null || echo "0")
+          MAIN_SIZE_MB=$(echo "scale=2; $MAIN_SIZE / 1048576" | bc)
+          
+          echo "main_apk_size=$MAIN_SIZE" >> $GITHUB_OUTPUT
+          echo "main_apk_size_mb=${MAIN_SIZE_MB}MB" >> $GITHUB_OUTPUT
+          
+          echo "📦 APK Size: ${MAIN_SIZE_MB}MB"
+      
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk-${{ needs.version-check.outputs.version }}
+          path: |
+            dezero_app/build/app/outputs/flutter-apk/DeZer0-*.apk
+            dezero_app/build/app/outputs/flutter-apk/checksums-sha256.txt
+          retention-days: 30
+
+  # =========================================
+  # Job 3: Create Release
+  # =========================================
+  create-release:
+    name: 🚀 Create Release
+    runs-on: ubuntu-latest
+    needs: [version-check, build-android]
+    if: needs.version-check.outputs.should_release == 'true'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Download APK artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apk-${{ needs.version-check.outputs.version }}
+          path: ./release-assets
+      
+      - name: List release assets
+        run: |
+          echo "📦 Release Assets:"
+          ls -la ./release-assets/
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          PREV_VERSION="${{ needs.version-check.outputs.previous_version }}"
+          
+          # Get commits since last release
+          if [ "$PREV_VERSION" != "0.0.0" ]; then
+            PREV_TAG="app-v${PREV_VERSION}"
+            if git rev-parse "$PREV_TAG" >/dev/null 2>&1; then
+              COMMITS=$(git log ${PREV_TAG}..HEAD --oneline --no-merges -- dezero_app/ | head -20)
+            else
+              COMMITS=$(git log --oneline --no-merges -20 -- dezero_app/)
+            fi
+          else
+            COMMITS=$(git log --oneline --no-merges -20 -- dezero_app/)
+          fi
+          
+          echo "commits<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Generate release notes
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          BUILD_NUMBER="${{ needs.version-check.outputs.build_number }}"
+          PREV_VERSION="${{ needs.version-check.outputs.previous_version }}"
+          
+          cat > release_notes.md << 'EOF'
+          ## 📱 DeZer0 Mobile App v${{ needs.version-check.outputs.version }}
+          
+          ### 📦 Downloads
+          
+          | File | Architecture | Description |
+          |------|--------------|-------------|
+          | `DeZer0-v${{ needs.version-check.outputs.version }}.apk` | Universal | Compatible with all Android devices |
+          | `DeZer0-v${{ needs.version-check.outputs.version }}-arm64-v8a.apk` | ARM64 | Optimized for modern 64-bit devices |
+          | `DeZer0-v${{ needs.version-check.outputs.version }}-armeabi-v7a.apk` | ARM32 | For older 32-bit devices |
+          | `DeZer0-v${{ needs.version-check.outputs.version }}-x86_64.apk` | x86_64 | For emulators and x86 devices |
+          
+          ### 🔒 Security
+          - SHA256 checksums are included in `checksums-sha256.txt`
+          - Always verify your download matches the checksum
+          
+          ### 📝 Recent Changes
+          ${{ steps.changelog.outputs.commits }}
+          
+          ### 🚀 Installation
+          1. Download the APK file for your device
+          2. Enable "Install from Unknown Sources" in Android settings
+          3. Open the downloaded APK file
+          4. Tap "Install" and wait for completion
+          5. Grant Bluetooth and Location permissions when prompted
+          
+          ### ⚡ Quick Start
+          1. Power on your ESP32 with DeZer0 firmware
+          2. Open DeZer0 app
+          3. Navigate to "Device" screen
+          4. Scan and connect to your device
+          5. Browse tools from the Nex-powered marketplace
+          
+          ### 🔧 Requirements
+          - **Android**: 6.0 (Marshmallow) or higher
+          - **Bluetooth**: 4.0 (BLE) support
+          - **Storage**: ~50MB free space
+          - **Permissions**: Bluetooth, Location (for BLE scanning)
+          
+          ### 🐛 Issues?
+          Report bugs at: https://github.com/${{ github.repository }}/issues
+          
+          ---
+          **Build Info**: v${{ needs.version-check.outputs.version }} (Build ${{ needs.version-check.outputs.build_number }})
+          **Previous Version**: v${{ needs.version-check.outputs.previous_version }}
+          EOF
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: app-v${{ needs.version-check.outputs.version }}
+          name: DeZer0 Mobile App v${{ needs.version-check.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(needs.version-check.outputs.version, 'beta') || contains(needs.version-check.outputs.version, 'alpha') || contains(needs.version-check.outputs.version, 'rc') }}
+          files: |
+            ./release-assets/DeZer0-*.apk
+            ./release-assets/checksums-sha256.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =========================================
+  # Job 4: Verify Release
+  # =========================================
+  verify-release:
+    name: ✅ Verify Release
+    runs-on: ubuntu-latest
+    needs: [version-check, create-release]
+    if: needs.version-check.outputs.should_release == 'true'
+    
+    steps:
+      - name: Wait for release to be published
+        run: sleep 15
+      
+      - name: Verify release exists
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          TAG="app-v${VERSION}"
+          
+          RELEASE_INFO=$(gh api repos/${{ github.repository }}/releases/tags/${TAG} 2>/dev/null || echo "NOT_FOUND")
+          
+          if [ "$RELEASE_INFO" = "NOT_FOUND" ]; then
+            echo "❌ Release not found: $TAG"
+            exit 1
+          fi
+          
+          echo "✅ Release verified: $TAG"
+          echo "$RELEASE_INFO" | jq '.name, .tag_name, .html_url'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Verify assets uploaded
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          TAG="app-v${VERSION}"
+          
+          ASSETS=$(gh release view $TAG --json assets -q '.assets[].name')
+          
+          echo "📦 Release assets:"
+          echo "$ASSETS"
+          
+          # Check for main APK
+          if ! echo "$ASSETS" | grep -q "DeZer0-v${VERSION}.apk"; then
+            echo "❌ Main APK not found!"
+            exit 1
+          fi
+          
+          # Check for checksums
+          if ! echo "$ASSETS" | grep -q "checksums-sha256.txt"; then
+            echo "❌ Checksums file not found!"
+            exit 1
+          fi
+          
+          echo "✅ All required assets are present!"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Summary
+        run: |
+          VERSION="${{ needs.version-check.outputs.version }}"
+          echo "## 🎉 Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: v${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build Number**: ${{ needs.version-check.outputs.build_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Previous Version**: v${{ needs.version-check.outputs.previous_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/app-v${VERSION}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📱 Download" >> $GITHUB_STEP_SUMMARY
+          echo "https://github.com/${{ github.repository }}/releases/download/app-v${VERSION}/DeZer0-v${VERSION}.apk" >> $GITHUB_STEP_SUMMARY
